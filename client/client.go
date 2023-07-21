@@ -27,6 +27,8 @@ var (
 	ErrOldCluster           = errors.New("regattaclient: old cluster version")
 )
 
+var sharedBufferPool = grpc.NewSharedBufferPool()
+
 var Version = "unknown"
 
 // Client provides and manages an regatta client session.
@@ -205,6 +207,9 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 		grpc.WithUnaryInterceptor(c.unaryClientInterceptor(withMax(defaultUnaryMaxRetries), rrBackoff)),
 	)
 
+	// Buffer pool.
+	opts = append(opts, grpc.WithRecvBufferPool(sharedBufferPool))
+
 	return opts
 }
 
@@ -351,8 +356,8 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 	client.conn = conn
 
-	client.Cluster = NewCluster(client)
-	client.KV = NewKV(client)
+	client.Cluster = newCluster(client)
+	client.KV = newKV(client)
 
 	if cfg.RejectOldCluster {
 		if err := client.checkVersion(); err != nil {

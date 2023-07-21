@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	pb "github.com/jamf/regatta-go/proto"
+	pb "github.com/jamf/regatta-go/client/internal/proto"
 	"google.golang.org/grpc"
 )
 
@@ -29,7 +29,7 @@ type cluster struct {
 	callOpts []grpc.CallOption
 }
 
-func NewCluster(c *Client) Cluster {
+func newCluster(c *Client) Cluster {
 	api := &cluster{
 		remote: &retryClusterClient{cc: pb.NewClusterClient(c.conn)},
 		dial: func(endpoint string) (pb.ClusterClient, func(), error) {

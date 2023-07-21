@@ -8,7 +8,7 @@
 [![Contributors](https://img.shields.io/github/contributors/jamf/regatta-go)](https://github.com/jamf/regatta-go/graphs/contributors)
 [![License](https://img.shields.io/github/license/jamf/regatta-go)](LICENSE)
 
-This repository hosts the code of **Regatta** client for Go language. For documentation and examples, check the [godocs](https://godoc.org/github.com/jamf/regatta-go).
+This repository hosts the code of **Regatta** client for Go language. For documentation and examples check the [godocs](https://godoc.org/github.com/jamf/regatta-go) page.
 
 ## Example use
 
@@ -43,7 +43,7 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) // Provide operation timeout
 	defer cancel()
-
+	
 	put, err := c.Table("regatta-test").Put(ctx, "foo", "bar")
 	if err != nil {
 		panic(err)
@@ -55,10 +55,10 @@ func main() {
 ## Regatta Documentation
 
 For guidance on installation, deployment, and administration,
-see the [Jamf Regatta documentation](https://engineering.jamf.com/regatta).
+see the [documentation page](https://engineering.jamf.com/regatta).
 
 ## Contributing
 
-Regatta is in active development and contributors are welcome! For guidance on development, see the *Contributing* page
-of the [Jamf Regatta documentation.](https://engineering.jamf.com/regatta/contributing).
+Regatta is in active development and contributors are welcome! For guidance on development, see the page
+[Contributing](https://engineering.jamf.com/regatta/contributing).
 Feel free to ask questions and engage in [GitHub Discussions](https://github.com/jamf/regatta/discussions)!

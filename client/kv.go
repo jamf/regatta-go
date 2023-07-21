@@ -7,7 +7,7 @@ import (
 	"math/rand"
 	"time"
 
-	pb "github.com/jamf/regatta-go/proto"
+	pb "github.com/jamf/regatta-go/client/internal/proto"
 	"google.golang.org/grpc"
 )
 
@@ -109,7 +109,7 @@ type kv struct {
 	callOpts []grpc.CallOption
 }
 
-func NewKV(c *Client) KV {
+func newKV(c *Client) KV {
 	return &kv{remote: &retryKVClient{client: pb.NewKVClient(c.conn)}, callOpts: c.callOpts}
 }
 
