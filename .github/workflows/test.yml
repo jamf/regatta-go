@@ -1,0 +1,63 @@
+name: Test
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+  workflow_dispatch:
+  issue_comment:
+    types:
+    - created
+
+jobs:
+  unit:
+    if: (github.event.issue.pull_request != '' && contains(github.event.comment.body, '/test')) || github.event_name == 'pull_request' || github.event_name == 'push'
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - name: Install Go
+      uses: actions/setup-go@v4
+      with:
+        go-version-file: go.mod
+    - name: Test
+      run: |
+        go test -v -cover ./... -coverprofile coverage.out -coverpkg ./...
+    - name: Coverage track
+      uses: coverallsapp/github-action@v2
+      with:
+        format: golang
+        file: coverage.out
+  build:
+    if: (github.event.issue.pull_request != '' && contains(github.event.comment.body, '/test')) || github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Build
+      run:
+        go build -v ./...
+  vulncheck:
+    if: github.actor != 'dependabot[bot]' && ((github.event.issue.pull_request != '' && contains(github.event.comment.body, '/test')) || github.event_name == 'pull_request' || github.event_name == 'push')
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Install Go
+      uses: actions/setup-go@v4
+      id: go-version
+      with:
+        cache: false
+        go-version-file: go.mod
+    - name: Scan for Vulnerabilities in Code
+      uses: wandera/govulncheck-action@v0.0.10
+      with:
+        go-version: ${{ steps.go-version.outputs.go-version }}
+        package: ./...
