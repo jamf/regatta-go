@@ -1,3 +1,5 @@
+// Copyright JAMF Software, LLC
+
 package client
 
 import (
@@ -5,9 +7,8 @@ import (
 	"math/rand"
 	"time"
 
-	"google.golang.org/grpc"
-
 	pb "github.com/jamf/regatta-go/proto"
+	"google.golang.org/grpc"
 )
 
 type (
@@ -90,12 +91,15 @@ func (op OpResponse) Txn() *TxnResponse    { return op.txn }
 func (resp *PutResponse) OpResponse() OpResponse {
 	return OpResponse{put: resp}
 }
+
 func (resp *GetResponse) OpResponse() OpResponse {
 	return OpResponse{get: resp}
 }
+
 func (resp *DeleteResponse) OpResponse() OpResponse {
 	return OpResponse{del: resp}
 }
+
 func (resp *TxnResponse) OpResponse() OpResponse {
 	return OpResponse{txn: resp}
 }
@@ -106,25 +110,21 @@ type kv struct {
 }
 
 func NewKV(c *Client) KV {
-	api := &kv{remote: &retryKVClient{client: pb.NewKVClient(c.conn)}}
-	if c != nil {
-		api.callOpts = c.callOpts
-	}
-	return api
+	return &kv{remote: &retryKVClient{client: pb.NewKVClient(c.conn)}, callOpts: c.callOpts}
 }
 
 func (kv *kv) Put(ctx context.Context, table, key, val string, opts ...OpOption) (*PutResponse, error) {
-	r, err := kv.Do(ctx, OpPut(table, key, val, opts...))
+	r, err := kv.Do(ctx, opPut(table, key, val, opts...))
 	return r.put, toErr(ctx, err)
 }
 
 func (kv *kv) Get(ctx context.Context, table, key string, opts ...OpOption) (*GetResponse, error) {
-	r, err := kv.Do(ctx, OpGet(table, key, opts...))
+	r, err := kv.Do(ctx, opGet(table, key, opts...))
 	return r.get, toErr(ctx, err)
 }
 
 func (kv *kv) Delete(ctx context.Context, table, key string, opts ...OpOption) (*DeleteResponse, error) {
-	r, err := kv.Do(ctx, OpDelete(table, key, opts...))
+	r, err := kv.Do(ctx, opDelete(table, key, opts...))
 	return r.del, toErr(ctx, err)
 }
 
@@ -182,23 +182,22 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 
 type table struct {
 	kv       *kv
-	ctx      context.Context
 	table    string
 	callOpts []grpc.CallOption
 }
 
 func (t *table) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
-	r, err := t.kv.Do(ctx, OpPut(t.table, key, val, opts...))
+	r, err := t.kv.Do(ctx, opPut(t.table, key, val, opts...))
 	return r.put, toErr(ctx, err)
 }
 
 func (t *table) Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error) {
-	r, err := t.kv.Do(ctx, OpGet(t.table, key, opts...))
+	r, err := t.kv.Do(ctx, opGet(t.table, key, opts...))
 	return r.get, toErr(ctx, err)
 }
 
 func (t *table) Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error) {
-	r, err := t.kv.Do(ctx, OpDelete(t.table, key, opts...))
+	r, err := t.kv.Do(ctx, opDelete(t.table, key, opts...))
 	return r.del, toErr(ctx, err)
 }
 
@@ -298,6 +297,7 @@ func backoffLinearWithJitter(waitBetween time.Duration, jitterFraction float64) 
 }
 
 func jitterUp(duration time.Duration, jitter float64) time.Duration {
+	//nolint:gosec
 	multiplier := jitter * (rand.Float64()*2 - 1)
 	return time.Duration(float64(duration) * (1 + multiplier))
 }

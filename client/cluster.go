@@ -1,3 +1,5 @@
+// Copyright JAMF Software, LLC
+
 package client
 
 import (
@@ -5,7 +7,6 @@ import (
 	"fmt"
 
 	pb "github.com/jamf/regatta-go/proto"
-
 	"google.golang.org/grpc"
 )
 
@@ -39,7 +40,8 @@ func NewCluster(c *Client) Cluster {
 
 			cancel := func() { conn.Close() }
 			return &retryClusterClient{cc: pb.NewClusterClient(c.conn)}, cancel, nil
-		}}
+		},
+	}
 	if c != nil {
 		api.callOpts = c.callOpts
 	}
@@ -55,7 +57,7 @@ func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
 }
 
 func (c *cluster) MemberList(ctx context.Context, opts ...OpOption) (*MemberListResponse, error) {
-	opt := OpGet("", "", opts...)
+	opt := opGet("", "", opts...)
 	resp, err := c.remote.MemberList(ctx, &pb.MemberListRequest{Linearizable: !opt.serializable}, c.callOpts...)
 	if err == nil {
 		return (*MemberListResponse)(resp), nil

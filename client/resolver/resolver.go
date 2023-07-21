@@ -1,11 +1,12 @@
+// Copyright JAMF Software, LLC
+
 package resolver
 
 import (
+	"github.com/jamf/regatta-go/client/endpoint"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/grpc/serviceconfig"
-
-	"github.com/jamf/regatta-go/client/endpoint"
 )
 
 const (

@@ -1,3 +1,5 @@
+// Copyright JAMF Software, LLC
+
 package client
 
 import (
@@ -59,6 +61,9 @@ type Config struct {
 
 	// PermitWithoutStream when set will allow client to send keepalive pings to server without any active streams(RPCs).
 	PermitWithoutStream bool `json:"permit-without-stream"`
+
+	// RejectOldCluster when set will refuse to create a client against an outdated cluster.
+	RejectOldCluster bool `json:"reject-old-cluster"`
 }
 
 // ConfigSpec is the configuration from users, which comes from command-line flags,
@@ -85,8 +90,8 @@ type SecureConfig struct {
 }
 
 // NewClientConfig creates a Config based on the provided ConfigSpec.
-func NewClientConfig(confSpec *ConfigSpec) (*Config, error) {
-	tlsCfg, err := newTLSConfig(confSpec.Secure)
+func NewClientConfig(confSpec *ConfigSpec, lg Logger) (*Config, error) {
+	tlsCfg, err := newTLSConfig(confSpec.Secure, lg)
 	if err != nil {
 		return nil, err
 	}
@@ -102,13 +107,41 @@ func NewClientConfig(confSpec *ConfigSpec) (*Config, error) {
 	return cfg, nil
 }
 
-func newTLSConfig(scfg *SecureConfig) (*tls.Config, error) {
-	tlsCfg := &tls.Config{}
+func newTLSConfig(scfg *SecureConfig, lg Logger) (*tls.Config, error) {
+	var (
+		tlsCfg *tls.Config
+		err    error
+	)
+
+	if scfg == nil {
+		return nil, nil
+	}
+
+	if scfg.Cert != "" || scfg.Key != "" || scfg.Cacert != "" || scfg.ServerName != "" {
+		cfgtls := &TLSInfo{
+			CertFile:      scfg.Cert,
+			KeyFile:       scfg.Key,
+			TrustedCAFile: scfg.Cacert,
+			ServerName:    scfg.ServerName,
+			Logger:        lg,
+		}
+		if tlsCfg, err = cfgtls.ClientConfig(); err != nil {
+			return nil, err
+		}
+	}
+
+	// If key/cert is not given but user wants secure connection, we
+	// should still setup an empty tls configuration for gRPC to setup
+	// secure connection.
+	if tlsCfg == nil && !scfg.InsecureTransport {
+		tlsCfg = &tls.Config{MinVersion: tls.VersionTLS12, MaxVersion: tls.VersionTLS13}
+	}
+
 	// If the user wants to skip TLS verification then we should set
 	// the InsecureSkipVerify flag in tls configuration.
 	if scfg.InsecureSkipVerify {
 		if tlsCfg == nil {
-			tlsCfg = &tls.Config{}
+			tlsCfg = &tls.Config{MinVersion: tls.VersionTLS12, MaxVersion: tls.VersionTLS13}
 		}
 		tlsCfg.InsecureSkipVerify = scfg.InsecureSkipVerify
 	}

@@ -1,3 +1,5 @@
+// Copyright JAMF Software, LLC
+
 package credentials
 
 import (
@@ -79,6 +81,7 @@ func (tc *transportCredential) Clone() grpccredentials.TransportCredentials {
 }
 
 func (tc *transportCredential) OverrideServerName(serverNameOverride string) error {
+	//nolint:staticcheck
 	return tc.gtc.OverrideServerName(serverNameOverride)
 }
 

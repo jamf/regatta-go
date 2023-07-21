@@ -1,3 +1,5 @@
+// Copyright JAMF Software, LLC
+
 package client
 
 import (
@@ -38,24 +40,6 @@ type Op struct {
 
 	// for watch, put, delete
 	prevKV bool
-
-	// for watch
-	// fragmentation should be disabled by default
-	// if true, split watch events when total exceeds
-	// "--max-request-bytes" flag value + 512-byte
-	fragment bool
-
-	// for put
-	ignoreValue bool
-	ignoreLease bool
-
-	// progressNotify is for progress updates.
-	progressNotify bool
-	// createdNotify is for created event
-	createdNotify bool
-	// filters for watchers
-	filterPut    bool
-	filterDelete bool
 
 	// for put
 	val []byte
@@ -212,7 +196,11 @@ func NewOp() *Op {
 }
 
 // OpGet returns "get" operation based on given key and operation options.
-func OpGet(table, key string, opts ...OpOption) Op {
+func OpGet(key string, opts ...OpOption) Op {
+	return opGet("", key, opts...)
+}
+
+func opGet(table, key string, opts ...OpOption) Op {
 	// WithPrefix and WithFromKey are not supported together
 	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
@@ -223,7 +211,11 @@ func OpGet(table, key string, opts ...OpOption) Op {
 }
 
 // OpDelete returns "delete" operation based on given key and operation options.
-func OpDelete(table, key string, opts ...OpOption) Op {
+func OpDelete(key string, opts ...OpOption) Op {
+	return opDelete("", key, opts...)
+}
+
+func opDelete(table, key string, opts ...OpOption) Op {
 	// WithPrefix and WithFromKey are not supported together
 	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
@@ -243,16 +235,15 @@ func OpDelete(table, key string, opts ...OpOption) Op {
 		panic("unexpected mod revision filter in delete")
 	case ret.minCreateRev != 0, ret.maxCreateRev != 0:
 		panic("unexpected create revision filter in delete")
-	case ret.filterDelete, ret.filterPut:
-		panic("unexpected filter in delete")
-	case ret.createdNotify:
-		panic("unexpected createdNotify in delete")
 	}
 	return ret
 }
 
 // OpPut returns "put" operation based on given key-value and operation options.
-func OpPut(table, key, val string, opts ...OpOption) Op {
+func OpPut(key, val string, opts ...OpOption) Op {
+	return opPut("", key, val, opts...)
+}
+func opPut(table, key, val string, opts ...OpOption) Op {
 	ret := Op{t: tPut, table: []byte(table), key: []byte(key), val: []byte(val)}
 	ret.applyOpts(opts)
 	switch {
@@ -270,10 +261,6 @@ func OpPut(table, key, val string, opts ...OpOption) Op {
 		panic("unexpected mod revision filter in put")
 	case ret.minCreateRev != 0, ret.maxCreateRev != 0:
 		panic("unexpected create revision filter in put")
-	case ret.filterDelete, ret.filterPut:
-		panic("unexpected filter in put")
-	case ret.createdNotify:
-		panic("unexpected createdNotify in put")
 	}
 	return ret
 }
@@ -385,32 +372,6 @@ func WithMinCreateRev(rev int64) OpOption { return func(op *Op) { op.minCreateRe
 // WithMaxCreateRev filters out keys for Get with creation revisions greater than the given revision.
 func WithMaxCreateRev(rev int64) OpOption { return func(op *Op) { op.maxCreateRev = rev } }
 
-// WithProgressNotify makes watch server send periodic progress updates
-// every 10 minutes when there is no incoming events.
-// Progress updates have zero events in WatchResponse.
-func WithProgressNotify() OpOption {
-	return func(op *Op) {
-		op.progressNotify = true
-	}
-}
-
-// WithCreatedNotify makes watch server sends the created event.
-func WithCreatedNotify() OpOption {
-	return func(op *Op) {
-		op.createdNotify = true
-	}
-}
-
-// WithFilterPut discards PUT events from the watcher.
-func WithFilterPut() OpOption {
-	return func(op *Op) { op.filterPut = true }
-}
-
-// WithFilterDelete discards DELETE events from the watcher.
-func WithFilterDelete() OpOption {
-	return func(op *Op) { op.filterDelete = true }
-}
-
 // WithPrevKV gets the previous key-value pair before the event happens. If the previous KV is already compacted,
 // nothing will be returned.
 func WithPrevKV() OpOption {
@@ -440,6 +401,7 @@ func IsOptsWithFromKey(opts []OpOption) bool {
 }
 
 type CompareTarget int
+
 type CompareResult int
 
 const (

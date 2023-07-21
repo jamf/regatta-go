@@ -1,3 +1,5 @@
+// Copyright JAMF Software, LLC
+
 package client
 
 import (
@@ -26,7 +28,7 @@ func WithRequireLeader(ctx context.Context) context.Context {
 	return metadata.NewOutgoingContext(ctx, copied)
 }
 
-// embeds client version
+// withVersion embeds client version.
 func withVersion(ctx context.Context) context.Context {
 	md, ok := metadata.FromOutgoingContext(ctx)
 	if !ok { // no outgoing metadata ctx key, create one

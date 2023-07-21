@@ -1,3 +1,5 @@
+// Copyright JAMF Software, LLC
+
 package endpoint
 
 import (
@@ -15,7 +17,7 @@ const (
 	CredsRequire CredsRequirement = iota
 	// CredsDrop - Credentials/certificate not needed and should get ignored.
 	CredsDrop
-	// CredsOptional - Credentials/certificate might be used if supplied
+	// CredsOptional - Credentials/certificate might be used if supplied.
 	CredsOptional
 )
 

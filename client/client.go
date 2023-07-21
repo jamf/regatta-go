@@ -1,3 +1,5 @@
+// Copyright JAMF Software, LLC
+
 package client
 
 import (
@@ -12,7 +14,6 @@ import (
 	"github.com/jamf/regatta-go/client/credentials"
 	"github.com/jamf/regatta-go/client/endpoint"
 	"github.com/jamf/regatta-go/client/resolver"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	grpccredentials "google.golang.org/grpc/credentials"
@@ -77,7 +78,7 @@ func NewCtxClient(ctx context.Context, opts ...Option) *Client {
 	return c
 }
 
-// Option is a function type that can be passed as argument to NewCtxClient to configure client
+// Option is a function type that can be passed as argument to NewCtxClient to configure client.
 type Option func(*Client)
 
 // NewFromURL creates a new regatta client from a URL.
@@ -90,7 +91,7 @@ func NewFromURLs(urls []string) (*Client, error) {
 	return New(&Config{Endpoints: urls})
 }
 
-// WithLogger is a NewCtxClient option that overrides the logger
+// WithLogger is a NewCtxClient option that overrides the logger.
 func WithLogger(lg Logger) Option {
 	return func(c *Client) {
 		c.lg = lg
@@ -98,10 +99,7 @@ func WithLogger(lg Logger) Option {
 }
 
 // WithLogger overrides the logger.
-//
-// Deprecated: Please use WithZapLogger or Logger field in clientv3.Config
-//
-// Does not changes grpcLogger, that can be explicitly configured
+// Does not change grpcLogger, that can be explicitly configured
 // using grpc_zap.ReplaceGrpcLoggerV2(..) method.
 func (c *Client) WithLogger(lg Logger) *Client {
 	c.lgMu.Lock()
@@ -181,7 +179,7 @@ func (c *Client) autoSync() {
 }
 
 // dialSetupOpts gives the dial opts prior to any authentication.
-func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
+func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) (opts []grpc.DialOption) {
 	if c.cfg.DialKeepAliveTime > 0 {
 		params := keepalive.ClientParameters{
 			Time:                c.cfg.DialKeepAliveTime,
@@ -209,7 +207,7 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 		grpc.WithUnaryInterceptor(c.unaryClientInterceptor(withMax(defaultUnaryMaxRetries), rrBackoff)),
 	)
 
-	return opts, nil
+	return opts
 }
 
 // Dial connects to a single endpoint using the client's config.
@@ -231,10 +229,7 @@ func (c *Client) dialWithBalancer(dopts ...grpc.DialOption) (*grpc.ClientConn, e
 
 // dial configures and dials any grpc balancer target.
 func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	opts, err := c.dialSetupOpts(creds, dopts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure dialer: %v", err)
-	}
+	opts := c.dialSetupOpts(creds, dopts...)
 	if c.authTokenBundle != nil {
 		opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
 	}
@@ -363,6 +358,13 @@ func newClient(cfg *Config) (*Client, error) {
 	client.Cluster = NewCluster(client)
 	client.KV = NewKV(client)
 
+	if cfg.RejectOldCluster {
+		if err := client.checkVersion(); err != nil {
+			_ = client.Close()
+			return nil, err
+		}
+	}
+
 	go client.autoSync()
 	return client, nil
 }
@@ -434,44 +436,8 @@ func (c *Client) checkVersion() (err error) {
 	return err
 }
 
-// ActiveConnection returns the current in-use connection
+// ActiveConnection returns the current in-use connection.
 func (c *Client) ActiveConnection() *grpc.ClientConn { return c.conn }
-
-// isHaltErr returns true if the given error and context indicate no forward
-// progress can be made, even after reconnecting.
-func isHaltErr(ctx context.Context, err error) bool {
-	if ctx != nil && ctx.Err() != nil {
-		return true
-	}
-	if err == nil {
-		return false
-	}
-	ev, _ := status.FromError(err)
-	// Unavailable codes mean the system will be right back.
-	// (e.g., can't connect, lost leader)
-	// Treat Internal codes as if something failed, leaving the
-	// system in an inconsistent state, but retrying could make progress.
-	// (e.g., failed in middle of send, corrupted frame)
-	// TODO: are permanent Internal errors possible from grpc?
-	return ev.Code() != codes.Unavailable && ev.Code() != codes.Internal
-}
-
-// isUnavailableErr returns true if the given error is an unavailable error
-func isUnavailableErr(ctx context.Context, err error) bool {
-	if ctx != nil && ctx.Err() != nil {
-		return false
-	}
-	if err == nil {
-		return false
-	}
-	ev, ok := status.FromError(err)
-	if ok {
-		// Unavailable codes mean the system will be right back.
-		// (e.g., can't connect, lost leader)
-		return ev.Code() == codes.Unavailable
-	}
-	return false
-}
 
 func toErr(ctx context.Context, err error) error {
 	if err == nil {
@@ -489,14 +455,6 @@ func toErr(ctx context.Context, err error) error {
 		}
 	}
 	return err
-}
-
-func canceledByCaller(stopCtx context.Context, err error) bool {
-	if stopCtx.Err() == nil || err == nil {
-		return false
-	}
-
-	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
 // IsConnCanceled returns true, if error is from a closed gRPC connection.

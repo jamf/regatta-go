@@ -1,3 +1,5 @@
+// Copyright JAMF Software, LLC
+
 package client
 
 import (
@@ -21,63 +23,62 @@ type Logger interface {
 	Errorf(string, ...any)
 }
 
-var defaultLogger Logger = &printLogger{}
+var defaultLogger Logger = &PrintLogger{}
 
-type printLogger struct {
-}
+type PrintLogger struct{}
 
-func (p printLogger) Info(a ...any) {
-	log.Print(a)
-}
-
-func (p printLogger) Infof(s string, a ...any) {
-	log.Printf(s, a...)
-}
-
-func (p printLogger) Debug(a ...any) {
+func (p PrintLogger) Info(a ...any) {
 	log.Print(a...)
 }
 
-func (p printLogger) Debugf(s string, a ...any) {
+func (p PrintLogger) Infof(s string, a ...any) {
 	log.Printf(s, a...)
 }
 
-func (p printLogger) Warn(a ...any) {
+func (p PrintLogger) Debug(a ...any) {
 	log.Print(a...)
 }
 
-func (p printLogger) Warnf(s string, a ...any) {
+func (p PrintLogger) Debugf(s string, a ...any) {
 	log.Printf(s, a...)
 }
 
-func (p printLogger) Error(a ...any) {
+func (p PrintLogger) Warn(a ...any) {
 	log.Print(a...)
 }
 
-func (p printLogger) Errorf(s string, a ...any) {
+func (p PrintLogger) Warnf(s string, a ...any) {
 	log.Printf(s, a...)
 }
 
-func (p printLogger) Fatal(a ...any) {
+func (p PrintLogger) Error(a ...any) {
 	log.Print(a...)
 }
 
-func (p printLogger) Fatalf(s string, a ...any) {
+func (p PrintLogger) Errorf(s string, a ...any) {
 	log.Printf(s, a...)
 }
 
-func (p printLogger) Fatalln(a ...any) {
+func (p PrintLogger) Fatal(a ...any) {
 	log.Print(a...)
 }
 
-func (p printLogger) Print(a ...any) {
-	log.Print(a...)
-}
-
-func (p printLogger) Printf(s string, a ...any) {
+func (p PrintLogger) Fatalf(s string, a ...any) {
 	log.Printf(s, a...)
 }
 
-func (p printLogger) Println(a ...any) {
+func (p PrintLogger) Fatalln(a ...any) {
+	log.Print(a...)
+}
+
+func (p PrintLogger) Print(a ...any) {
+	log.Print(a...)
+}
+
+func (p PrintLogger) Printf(s string, a ...any) {
+	log.Printf(s, a...)
+}
+
+func (p PrintLogger) Println(a ...any) {
 	log.Print(a...)
 }

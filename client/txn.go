@@ -1,12 +1,13 @@
+// Copyright JAMF Software, LLC
+
 package client
 
 import (
 	"context"
 	"sync"
 
-	"google.golang.org/grpc"
-
 	pb "github.com/jamf/regatta-go/proto"
+	"google.golang.org/grpc"
 )
 
 type Txn interface {
