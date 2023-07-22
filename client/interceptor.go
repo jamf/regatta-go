@@ -74,7 +74,7 @@ func (c *Client) streamClientInterceptor(optFuncs ...retryOption) grpc.StreamCli
 			return streamer(ctx, desc, cc, method, grpcOpts...)
 		}
 		if desc.ClientStreams {
-			return nil, status.Errorf(codes.Unimplemented, "clientv3/retry_interceptor: cannot retry on ClientStreams, set Disable()")
+			return nil, status.Errorf(codes.Unimplemented, "client/retry_interceptor: cannot retry on ClientStreams, set Disable()")
 		}
 		newStreamer, err := streamer(ctx, desc, cc, method, grpcOpts...)
 		if err != nil {

@@ -197,7 +197,7 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 	}
 
 	// Interceptor retry and backoff.
-	// TODO: Replace all of clientv3/retry.go with RetryPolicy:
+	// TODO: Replace all of client/retry.go with RetryPolicy:
 	// https://github.com/grpc/grpc-proto/blob/cdd9ed5c3d3f87aef62f373b93361cf7bddc620d/grpc/service_config/service_config.proto#L130
 	rrBackoff := withBackoff(c.roundRobinQuorumBackoff(defaultBackoffWaitBetween, defaultBackoffJitterFraction))
 	opts = append(opts,
