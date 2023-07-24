@@ -57,7 +57,7 @@ func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
 }
 
 func (c *cluster) MemberList(ctx context.Context, opts ...OpOption) (*MemberListResponse, error) {
-	opt := opGet("", "", opts...)
+	opt := OpGet("", opts...)
 	resp, err := c.remote.MemberList(ctx, &pb.MemberListRequest{Linearizable: !opt.serializable}, c.callOpts...)
 	if err == nil {
 		return (*MemberListResponse)(resp), nil

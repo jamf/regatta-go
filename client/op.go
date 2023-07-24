@@ -20,10 +20,9 @@ var noPrefixEnd = []byte{0}
 
 // Op represents an Operation that kv can execute.
 type Op struct {
-	t     opType
-	table []byte
-	key   []byte
-	end   []byte
+	t   opType
+	key []byte
+	end []byte
 
 	// for range
 	limit        int64
@@ -56,72 +55,60 @@ type Op struct {
 // accessors / mutators
 
 // IsTxn returns true if the "Op" type is transaction.
-func (op Op) IsTxn() bool {
+func (op *Op) IsTxn() bool {
 	return op.t == tTxn
 }
 
 // Txn returns the comparison(if) operations, "then" operations, and "else" operations.
-func (op Op) Txn() ([]Cmp, []Op, []Op) {
+func (op *Op) Txn() ([]Cmp, []Op, []Op) {
 	return op.cmps, op.thenOps, op.elseOps
 }
 
 // KeyBytes returns the byte slice holding the Op's key.
-func (op Op) KeyBytes() []byte { return op.key }
+func (op *Op) KeyBytes() []byte { return op.key }
 
 // WithKeyBytes sets the byte slice for the Op's key.
 func (op *Op) WithKeyBytes(key []byte) { op.key = key }
 
 // RangeBytes returns the byte slice holding with the Op's range end, if any.
-func (op Op) RangeBytes() []byte { return op.end }
+func (op *Op) RangeBytes() []byte { return op.end }
 
 // Rev returns the requested revision, if any.
-func (op Op) Rev() int64 { return op.rev }
+func (op *Op) Rev() int64 { return op.rev }
 
 // IsPut returns true iff the operation is a Put.
-func (op Op) IsPut() bool { return op.t == tPut }
+func (op *Op) IsPut() bool { return op.t == tPut }
 
 // IsGet returns true iff the operation is a Get.
-func (op Op) IsGet() bool { return op.t == tRange }
+func (op *Op) IsGet() bool { return op.t == tRange }
 
 // IsDelete returns true iff the operation is a Delete.
-func (op Op) IsDelete() bool { return op.t == tDeleteRange }
+func (op *Op) IsDelete() bool { return op.t == tDeleteRange }
 
 // IsSerializable returns true if the serializable field is true.
-func (op Op) IsSerializable() bool { return op.serializable }
+func (op *Op) IsSerializable() bool { return op.serializable }
 
 // IsKeysOnly returns whether keysOnly is set.
-func (op Op) IsKeysOnly() bool { return op.keysOnly }
+func (op *Op) IsKeysOnly() bool { return op.keysOnly }
 
 // IsCountOnly returns whether countOnly is set.
-func (op Op) IsCountOnly() bool { return op.countOnly }
-
-// MinModRev returns the operation's minimum modify revision.
-func (op Op) MinModRev() int64 { return op.minModRev }
-
-// MaxModRev returns the operation's maximum modify revision.
-func (op Op) MaxModRev() int64 { return op.maxModRev }
-
-// MinCreateRev returns the operation's minimum create revision.
-func (op Op) MinCreateRev() int64 { return op.minCreateRev }
-
-// MaxCreateRev returns the operation's maximum create revision.
-func (op Op) MaxCreateRev() int64 { return op.maxCreateRev }
+func (op *Op) IsCountOnly() bool { return op.countOnly }
 
 // WithRangeBytes sets the byte slice for the Op's range end.
 func (op *Op) WithRangeBytes(end []byte) { op.end = end }
 
 // ValueBytes returns the byte slice holding the Op's value, if any.
-func (op Op) ValueBytes() []byte { return op.val }
+func (op *Op) ValueBytes() []byte { return op.val }
 
 // WithValueBytes sets the byte slice for the Op's value.
 func (op *Op) WithValueBytes(v []byte) { op.val = v }
 
-func (op Op) toRangeRequest() *pb.RangeRequest {
+func (op *Op) toRangeRequest(table string) *pb.RangeRequest {
 	if op.t != tRange {
 		panic("op.t != tRange")
 	}
 	r := &pb.RangeRequest{
-		Table:             op.table,
+		Table:             []byte(table),
 		Key:               op.key,
 		RangeEnd:          op.end,
 		Limit:             op.limit,
@@ -136,7 +123,7 @@ func (op Op) toRangeRequest() *pb.RangeRequest {
 	return r
 }
 
-func (op Op) toTxnRequest() *pb.TxnRequest {
+func (op *Op) toTxnRequest(table string) *pb.TxnRequest {
 	thenOps := make([]*pb.RequestOp, len(op.thenOps))
 	for i, tOp := range op.thenOps {
 		thenOps[i] = tOp.toRequestOp()
@@ -149,10 +136,10 @@ func (op Op) toTxnRequest() *pb.TxnRequest {
 	for i := range op.cmps {
 		cmps[i] = (*pb.Compare)(&op.cmps[i])
 	}
-	return &pb.TxnRequest{Table: op.table, Compare: cmps, Success: thenOps, Failure: elseOps}
+	return &pb.TxnRequest{Table: []byte(table), Compare: cmps, Success: thenOps, Failure: elseOps}
 }
 
-func (op Op) toRequestOp() *pb.RequestOp {
+func (op *Op) toRequestOp() *pb.RequestOp {
 	switch op.t {
 	case tRange:
 		r := &pb.RequestOp_Range{
@@ -174,7 +161,7 @@ func (op Op) toRequestOp() *pb.RequestOp {
 	}
 }
 
-func (op Op) isWrite() bool {
+func (op *Op) isWrite() bool {
 	if op.t == tTxn {
 		for _, tOp := range op.thenOps {
 			if tOp.isWrite() {
@@ -197,30 +184,22 @@ func NewOp() *Op {
 
 // OpGet returns "get" operation based on given key and operation options.
 func OpGet(key string, opts ...OpOption) Op {
-	return opGet("", key, opts...)
-}
-
-func opGet(table, key string, opts ...OpOption) Op {
 	// WithPrefix and WithFromKey are not supported together
 	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
 	}
-	ret := Op{t: tRange, table: []byte(table), key: []byte(key)}
+	ret := Op{t: tRange, key: []byte(key)}
 	ret.applyOpts(opts)
 	return ret
 }
 
 // OpDelete returns "delete" operation based on given key and operation options.
 func OpDelete(key string, opts ...OpOption) Op {
-	return opDelete("", key, opts...)
-}
-
-func opDelete(table, key string, opts ...OpOption) Op {
 	// WithPrefix and WithFromKey are not supported together
 	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
 		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
 	}
-	ret := Op{t: tDeleteRange, table: []byte(table), key: []byte(key)}
+	ret := Op{t: tDeleteRange, key: []byte(key)}
 	ret.applyOpts(opts)
 	switch {
 	case ret.limit != 0:
@@ -241,11 +220,7 @@ func opDelete(table, key string, opts ...OpOption) Op {
 
 // OpPut returns "put" operation based on given key-value and operation options.
 func OpPut(key, val string, opts ...OpOption) Op {
-	return opPut("", key, val, opts...)
-}
-
-func opPut(table, key, val string, opts ...OpOption) Op {
-	ret := Op{t: tPut, table: []byte(table), key: []byte(key), val: []byte(val)}
+	ret := Op{t: tPut, key: []byte(key), val: []byte(val)}
 	ret.applyOpts(opts)
 	switch {
 	case ret.end != nil:
@@ -360,18 +335,6 @@ func WithKeysOnly() OpOption {
 func WithCountOnly() OpOption {
 	return func(op *Op) { op.countOnly = true }
 }
-
-// WithMinModRev filters out keys for Get with modification revisions less than the given revision.
-func WithMinModRev(rev int64) OpOption { return func(op *Op) { op.minModRev = rev } }
-
-// WithMaxModRev filters out keys for Get with modification revisions greater than the given revision.
-func WithMaxModRev(rev int64) OpOption { return func(op *Op) { op.maxModRev = rev } }
-
-// WithMinCreateRev filters out keys for Get with creation revisions less than the given revision.
-func WithMinCreateRev(rev int64) OpOption { return func(op *Op) { op.minCreateRev = rev } }
-
-// WithMaxCreateRev filters out keys for Get with creation revisions greater than the given revision.
-func WithMaxCreateRev(rev int64) OpOption { return func(op *Op) { op.maxCreateRev = rev } }
 
 // WithPrevKV gets the previous key-value pair before the event happens. If the previous KV is already compacted,
 // nothing will be returned.

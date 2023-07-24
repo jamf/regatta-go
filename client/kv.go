@@ -67,7 +67,7 @@ type KV interface {
 	// later time; the user can range over the operations, calling Do to
 	// execute them. Get/Put/Delete, on the other hand, are best suited
 	// for when the operation should be issued at the time of declaration.
-	Do(ctx context.Context, op Op) (OpResponse, error)
+	Do(ctx context.Context, table string, op Op) (OpResponse, error)
 
 	// Table is a convenience function that provides requests scoped to a single table.
 	Table(name string) Table
@@ -114,17 +114,17 @@ func NewKV(c *Client) KV {
 }
 
 func (kv *kv) Put(ctx context.Context, table, key, val string, opts ...OpOption) (*PutResponse, error) {
-	r, err := kv.Do(ctx, opPut(table, key, val, opts...))
+	r, err := kv.Do(ctx, table, OpPut(key, val, opts...))
 	return r.put, toErr(ctx, err)
 }
 
 func (kv *kv) Get(ctx context.Context, table, key string, opts ...OpOption) (*GetResponse, error) {
-	r, err := kv.Do(ctx, opGet(table, key, opts...))
+	r, err := kv.Do(ctx, table, OpGet(key, opts...))
 	return r.get, toErr(ctx, err)
 }
 
 func (kv *kv) Delete(ctx context.Context, table, key string, opts ...OpOption) (*DeleteResponse, error) {
-	r, err := kv.Do(ctx, opDelete(table, key, opts...))
+	r, err := kv.Do(ctx, table, OpDelete(key, opts...))
 	return r.del, toErr(ctx, err)
 }
 
@@ -145,32 +145,32 @@ func (kv *kv) Table(name string) Table {
 	}
 }
 
-func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
+func (kv *kv) Do(ctx context.Context, table string, op Op) (OpResponse, error) {
 	var err error
 	switch op.t {
 	case tRange:
 		var resp *pb.RangeResponse
-		resp, err = kv.remote.Range(ctx, op.toRangeRequest(), kv.callOpts...)
+		resp, err = kv.remote.Range(ctx, op.toRangeRequest(table), kv.callOpts...)
 		if err == nil {
 			return OpResponse{get: (*GetResponse)(resp)}, nil
 		}
 	case tPut:
 		var resp *pb.PutResponse
-		r := &pb.PutRequest{Table: op.table, Key: op.key, Value: op.val, PrevKv: op.prevKV}
+		r := &pb.PutRequest{Table: []byte(table), Key: op.key, Value: op.val, PrevKv: op.prevKV}
 		resp, err = kv.remote.Put(ctx, r, kv.callOpts...)
 		if err == nil {
 			return OpResponse{put: (*PutResponse)(resp)}, nil
 		}
 	case tDeleteRange:
 		var resp *pb.DeleteRangeResponse
-		r := &pb.DeleteRangeRequest{Table: op.table, Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
+		r := &pb.DeleteRangeRequest{Table: []byte(table), Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
 		resp, err = kv.remote.DeleteRange(ctx, r, kv.callOpts...)
 		if err == nil {
 			return OpResponse{del: (*DeleteResponse)(resp)}, nil
 		}
 	case tTxn:
 		var resp *pb.TxnResponse
-		resp, err = kv.remote.Txn(ctx, op.toTxnRequest(), kv.callOpts...)
+		resp, err = kv.remote.Txn(ctx, op.toTxnRequest(table), kv.callOpts...)
 		if err == nil {
 			return OpResponse{txn: (*TxnResponse)(resp)}, nil
 		}
@@ -187,17 +187,17 @@ type table struct {
 }
 
 func (t *table) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
-	r, err := t.kv.Do(ctx, opPut(t.table, key, val, opts...))
+	r, err := t.kv.Do(ctx, t.table, OpPut(key, val, opts...))
 	return r.put, toErr(ctx, err)
 }
 
 func (t *table) Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error) {
-	r, err := t.kv.Do(ctx, opGet(t.table, key, opts...))
+	r, err := t.kv.Do(ctx, t.table, OpGet(key, opts...))
 	return r.get, toErr(ctx, err)
 }
 
 func (t *table) Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error) {
-	r, err := t.kv.Do(ctx, opDelete(t.table, key, opts...))
+	r, err := t.kv.Do(ctx, t.table, OpDelete(key, opts...))
 	return r.del, toErr(ctx, err)
 }
 
