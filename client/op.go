@@ -3,6 +3,8 @@
 package client
 
 import (
+	"fmt"
+
 	pb "github.com/jamf/regatta-go/proto"
 )
 
@@ -134,7 +136,7 @@ func (op *Op) toTxnRequest(table string) *pb.TxnRequest {
 	}
 	cmps := make([]*pb.Compare, len(op.cmps))
 	for i := range op.cmps {
-		cmps[i] = (*pb.Compare)(&op.cmps[i])
+		cmps[i] = op.cmps[i].Compare
 	}
 	return &pb.TxnRequest{Table: []byte(table), Compare: cmps, Success: thenOps, Failure: elseOps}
 }
@@ -157,7 +159,7 @@ func (op *Op) toRequestOp() *pb.RequestOp {
 		r := &pb.RequestOp_DeleteRange{Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestDeleteRange{RequestDeleteRange: r}}
 	default:
-		panic("Unknown Op")
+		panic(fmt.Sprintf("unsupported transaction op type %d", op.t))
 	}
 }
 
@@ -375,7 +377,9 @@ const (
 	CompareValue
 )
 
-type Cmp pb.Compare
+type Cmp struct {
+	*pb.Compare
+}
 
 func Compare(cmp Cmp, result string, v interface{}) Cmp {
 	var r pb.Compare_CompareResult
@@ -408,17 +412,23 @@ func Compare(cmp Cmp, result string, v interface{}) Cmp {
 }
 
 func Value(key string) Cmp {
-	return Cmp{Key: []byte(key), Target: pb.Compare_VALUE}
+	cmp := Cmp{Compare: &pb.Compare{}}
+	cmp.Key = []byte(key)
+	cmp.Target = pb.Compare_VALUE
+	return cmp
 }
 
 // KeyBytes returns the byte slice holding with the comparison key.
-func (cmp *Cmp) KeyBytes() []byte { return cmp.Key }
+func (cmp Cmp) KeyBytes() []byte { return cmp.Key }
 
 // WithKeyBytes sets the byte slice for the comparison key.
-func (cmp *Cmp) WithKeyBytes(key []byte) { cmp.Key = key }
+func (cmp Cmp) WithKeyBytes(key []byte) Cmp {
+	cmp.Key = key
+	return cmp
+}
 
 // ValueBytes returns the byte slice holding the comparison value, if any.
-func (cmp *Cmp) ValueBytes() []byte {
+func (cmp Cmp) ValueBytes() []byte {
 	if tu, ok := cmp.TargetUnion.(*pb.Compare_Value); ok {
 		return tu.Value
 	}
@@ -426,7 +436,10 @@ func (cmp *Cmp) ValueBytes() []byte {
 }
 
 // WithValueBytes sets the byte slice for the comparison's value.
-func (cmp *Cmp) WithValueBytes(v []byte) { cmp.TargetUnion.(*pb.Compare_Value).Value = v }
+func (cmp Cmp) WithValueBytes(v []byte) Cmp {
+	cmp.TargetUnion.(*pb.Compare_Value).Value = v
+	return cmp
+}
 
 // WithRange sets the comparison to scan the range [key, end).
 func (cmp Cmp) WithRange(end string) Cmp {

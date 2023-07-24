@@ -37,11 +37,6 @@ issues:
     linters:
     - ineffassign
     - gosec
-  # Exclude copylock on op.go file.
-  - path: op\.go
-    linters:
-    - govet
-
   - linters:
     - staticcheck
     text: "SA4006:" #SA4006: this value of `not_used` is never used (staticcheck)

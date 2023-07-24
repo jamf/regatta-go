@@ -67,7 +67,7 @@ func (txn *txn) If(cs ...Cmp) Txn {
 	txn.cif = true
 
 	for i := range cs {
-		txn.cmps = append(txn.cmps, (*pb.Compare)(&cs[i]))
+		txn.cmps = append(txn.cmps, cs[i].Compare)
 	}
 
 	return txn
