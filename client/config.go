@@ -5,7 +5,6 @@ package client
 import (
 	"context"
 	"crypto/tls"
-	"log"
 	"time"
 
 	"google.golang.org/grpc"
@@ -70,9 +69,8 @@ type Config struct {
 // environment variables or config file. It is a fully declarative configuration,
 // and can be serialized & deserialized to/from JSON.
 type ConfigSpec struct {
-	log.Logger
+	Logger
 	Endpoints        []string      `json:"endpoints"`
-	RequestTimeout   time.Duration `json:"request-timeout"`
 	DialTimeout      time.Duration `json:"dial-timeout"`
 	KeepAliveTime    time.Duration `json:"keepalive-time"`
 	KeepAliveTimeout time.Duration `json:"keepalive-timeout"`
@@ -90,8 +88,11 @@ type SecureConfig struct {
 }
 
 // NewClientConfig creates a Config based on the provided ConfigSpec.
-func NewClientConfig(confSpec *ConfigSpec, lg Logger) (*Config, error) {
-	tlsCfg, err := newTLSConfig(confSpec.Secure, lg)
+func NewClientConfig(confSpec *ConfigSpec) (*Config, error) {
+	if confSpec.Logger == nil {
+		confSpec.Logger = defaultLogger
+	}
+	tlsCfg, err := newTLSConfig(confSpec.Secure, confSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +103,7 @@ func NewClientConfig(confSpec *ConfigSpec, lg Logger) (*Config, error) {
 		DialKeepAliveTime:    confSpec.KeepAliveTime,
 		DialKeepAliveTimeout: confSpec.KeepAliveTimeout,
 		TLS:                  tlsCfg,
+		Logger:               confSpec,
 	}
 
 	return cfg, nil

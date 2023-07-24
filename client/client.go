@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/jamf/regatta-go/client/credentials"
-	"github.com/jamf/regatta-go/client/endpoint"
-	"github.com/jamf/regatta-go/client/resolver"
+	"github.com/jamf/regatta-go/client/internal/endpoint"
+	"github.com/jamf/regatta-go/client/internal/resolver"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	grpccredentials "google.golang.org/grpc/credentials"
@@ -40,7 +40,7 @@ type Client struct {
 	creds    grpccredentials.TransportCredentials
 	resolver *resolver.RegattaManualResolver
 
-	epMu      *sync.RWMutex
+	epMu      sync.RWMutex
 	endpoints []string
 
 	ctx    context.Context
@@ -50,7 +50,7 @@ type Client struct {
 
 	callOpts []grpc.CallOption
 
-	lgMu *sync.RWMutex
+	lgMu sync.RWMutex
 	lg   Logger
 }
 
@@ -68,7 +68,7 @@ func New(cfg *Config) (*Client, error) {
 // service interface implementations and do not need connection management.
 func NewCtxClient(ctx context.Context, opts ...Option) *Client {
 	cctx, cancel := context.WithCancel(ctx)
-	c := &Client{ctx: cctx, cancel: cancel, lgMu: new(sync.RWMutex)}
+	c := &Client{ctx: cctx, cancel: cancel}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -98,10 +98,10 @@ func WithLogger(lg Logger) Option {
 	}
 }
 
-// WithLogger overrides the logger.
+// SetLogger overrides the logger.
 // Does not change grpcLogger, that can be explicitly configured
 // using grpc_zap.ReplaceGrpcLoggerV2(..) method.
-func (c *Client) WithLogger(lg Logger) *Client {
+func (c *Client) SetLogger(lg Logger) *Client {
 	c.lgMu.Lock()
 	c.lg = lg
 	c.lgMu.Unlock()
@@ -149,7 +149,7 @@ func (c *Client) Sync(ctx context.Context) error {
 	}
 	var eps []string
 	for _, m := range mresp.Members {
-		if len(m.Name) != 0 && !m.IsLearner {
+		if len(m.Name) != 0 {
 			eps = append(eps, m.ClientURLs...)
 		}
 	}
@@ -197,8 +197,6 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 	}
 
 	// Interceptor retry and backoff.
-	// TODO: Replace all of client/retry.go with RetryPolicy:
-	// https://github.com/grpc/grpc-proto/blob/cdd9ed5c3d3f87aef62f373b93361cf7bddc620d/grpc/service_config/service_config.proto#L130
 	rrBackoff := withBackoff(c.roundRobinQuorumBackoff(defaultBackoffWaitBetween, defaultBackoffJitterFraction))
 	opts = append(opts,
 		// Disable stream retry by default since go-grpc-middleware/retry does not support client streams.
@@ -303,9 +301,7 @@ func newClient(cfg *Config) (*Client, error) {
 		creds:    creds,
 		ctx:      ctx,
 		cancel:   cancel,
-		epMu:     new(sync.RWMutex),
 		callOpts: defaultCallOpts,
-		lgMu:     new(sync.RWMutex),
 	}
 
 	var err error

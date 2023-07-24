@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/jamf/regatta-go/client/snappy"
+	"github.com/jamf/regatta-go/client/internal/snappy"
 	"google.golang.org/grpc"
 )
 
@@ -34,7 +34,7 @@ var (
 	// client-side non-streaming retry limit, only applied to requests where server responds with
 	// a error code clearly indicating it was unable to process the request such as codes.Unavailable.
 	// If set to 0, retry is disabled.
-	defaultUnaryMaxRetries uint = 100
+	defaultUnaryMaxRetries uint = 10
 
 	// client-side retry backoff wait between requests.
 	defaultBackoffWaitBetween = 25 * time.Millisecond

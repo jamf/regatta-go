@@ -242,7 +242,7 @@ func isSafeRetry(c *Client, err error, callOpts *options) bool {
 	case nonRepeatable:
 		return isSafeRetryMutableRPC(err)
 	default:
-		c.lg.Warn("unrecognized retry policy retryPolicy=%s", callOpts.retryPolicy.String())
+		c.lg.Warnf("unrecognized retry policy retryPolicy=%s", callOpts.retryPolicy.String())
 		return false
 	}
 }

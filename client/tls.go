@@ -153,7 +153,6 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	}
 
 	// this only reloads certs when there's a client request
-	// TODO: support server-side refresh (e.g. inotify, SIGHUP), caching
 	cfg.GetCertificate = func(clientHello *tls.ClientHelloInfo) (cert *tls.Certificate, err error) {
 		cert, err = newCert(info.CertFile, info.KeyFile, info.parseFunc)
 		if os.IsNotExist(err) {

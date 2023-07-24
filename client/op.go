@@ -243,6 +243,7 @@ func opDelete(table, key string, opts ...OpOption) Op {
 func OpPut(key, val string, opts ...OpOption) Op {
 	return opPut("", key, val, opts...)
 }
+
 func opPut(table, key, val string, opts ...OpOption) Op {
 	ret := Op{t: tPut, table: []byte(table), key: []byte(key), val: []byte(val)}
 	ret.applyOpts(opts)
