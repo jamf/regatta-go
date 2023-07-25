@@ -1,0 +1,42 @@
+run:
+  timeout: 5m
+linters:
+  disable-all: true
+  enable:
+  - gci
+  - godot
+  - gofumpt
+  - goheader
+  - gosimple
+  - govet
+  - gosec
+  - ineffassign
+  - staticcheck
+  - typecheck
+  - unparam
+  - unused
+  - whitespace
+
+linters-settings:
+  gosec:
+    global:
+      audit: true
+    excludes:
+    - G104
+    - G304
+    - G401
+    - G501
+
+  goheader:
+    template: Copyright JAMF Software, LLC
+
+issues:
+  exclude-rules:
+  # Exclude some linters from running on tests files.
+  - path: _test\.go
+    linters:
+    - ineffassign
+    - gosec
+  - linters:
+    - staticcheck
+    text: "SA4006:" #SA4006: this value of `not_used` is never used (staticcheck)
