@@ -13,7 +13,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -46,12 +45,10 @@ func WithTable(name string) RegattaOption {
 type RegattaOption func(options *testOptions)
 
 func testWithRegatta(t *testing.T, version RegattaVersion, option ...RegattaOption) (string, error) {
-	if runtime.GOOS == "darwin" {
-		os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
-		t.Cleanup(func() {
-			os.Unsetenv("TESTCONTAINERS_RYUK_DISABLED")
-		})
-	}
+	os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+	t.Cleanup(func() {
+		os.Unsetenv("TESTCONTAINERS_RYUK_DISABLED")
+	})
 	testcontainers.SkipIfProviderIsNotHealthy(t)
 
 	opts := defaultOptions()
@@ -62,7 +59,7 @@ func testWithRegatta(t *testing.T, version RegattaVersion, option ...RegattaOpti
 	ctx := context.Background()
 	key, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
-		t.Error(err)
+		return "", err
 	}
 	keyPem := pem.EncodeToMemory(&pem.Block{
 		Type:  "RSA PRIVATE KEY",
@@ -71,7 +68,7 @@ func testWithRegatta(t *testing.T, version RegattaVersion, option ...RegattaOpti
 	keyPath := filepath.Join(t.TempDir(), "server.key")
 	err = os.WriteFile(keyPath, keyPem, 0o777)
 	if err != nil {
-		t.Error(err)
+		return "", err
 	}
 	tml := x509.Certificate{
 		// you can add any attr that you need
@@ -87,7 +84,7 @@ func testWithRegatta(t *testing.T, version RegattaVersion, option ...RegattaOpti
 	}
 	cert, err := x509.CreateCertificate(rand.Reader, &tml, &tml, &key.PublicKey, key)
 	if err != nil {
-		t.Error(err)
+		return "", err
 	}
 	certPath := filepath.Join(t.TempDir(), "server.crt")
 	certPem := pem.EncodeToMemory(&pem.Block{
@@ -96,7 +93,7 @@ func testWithRegatta(t *testing.T, version RegattaVersion, option ...RegattaOpti
 	})
 	err = os.WriteFile(certPath, certPem, 0o777)
 	if err != nil {
-		t.Error(err)
+		return "", err
 	}
 	regattaC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
@@ -127,7 +124,7 @@ func testWithRegatta(t *testing.T, version RegattaVersion, option ...RegattaOpti
 		Started: true,
 	})
 	if err != nil {
-		t.Error(err)
+		return "", err
 	}
 
 	t.Cleanup(func() {
