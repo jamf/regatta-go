@@ -5,7 +5,7 @@ package client
 import (
 	"fmt"
 
-	pb "github.com/jamf/regatta-go/proto"
+	pb "github.com/jamf/regatta-go/client/internal/proto"
 )
 
 type opType int

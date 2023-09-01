@@ -10,7 +10,7 @@
 // - protoc             v4.23.4
 // source: regatta.proto
 
-package proto
+package regattapb
 
 import (
 	context "context"

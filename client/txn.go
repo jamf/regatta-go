@@ -6,7 +6,7 @@ import (
 	"context"
 	"sync"
 
-	pb "github.com/jamf/regatta-go/proto"
+	pb "github.com/jamf/regatta-go/client/internal/proto"
 	"google.golang.org/grpc"
 )
 
