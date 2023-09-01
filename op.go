@@ -5,7 +5,7 @@ package client
 import (
 	"fmt"
 
-	pb "github.com/jamf/regatta-go/client/internal/proto"
+	"github.com/jamf/regatta-go/internal/proto"
 )
 
 type opType int
@@ -105,11 +105,11 @@ func (op *Op) ValueBytes() []byte { return op.val }
 // WithValueBytes sets the byte slice for the Op's value.
 func (op *Op) WithValueBytes(v []byte) { op.val = v }
 
-func (op *Op) toRangeRequest(table string) *pb.RangeRequest {
+func (op *Op) toRangeRequest(table string) *regattapb.RangeRequest {
 	if op.t != tRange {
 		panic("op.t != tRange")
 	}
-	r := &pb.RangeRequest{
+	r := &regattapb.RangeRequest{
 		Table:             []byte(table),
 		Key:               op.key,
 		RangeEnd:          op.end,
@@ -125,39 +125,39 @@ func (op *Op) toRangeRequest(table string) *pb.RangeRequest {
 	return r
 }
 
-func (op *Op) toTxnRequest(table string) *pb.TxnRequest {
-	thenOps := make([]*pb.RequestOp, len(op.thenOps))
+func (op *Op) toTxnRequest(table string) *regattapb.TxnRequest {
+	thenOps := make([]*regattapb.RequestOp, len(op.thenOps))
 	for i, tOp := range op.thenOps {
 		thenOps[i] = tOp.toRequestOp()
 	}
-	elseOps := make([]*pb.RequestOp, len(op.elseOps))
+	elseOps := make([]*regattapb.RequestOp, len(op.elseOps))
 	for i, eOp := range op.elseOps {
 		elseOps[i] = eOp.toRequestOp()
 	}
-	cmps := make([]*pb.Compare, len(op.cmps))
+	cmps := make([]*regattapb.Compare, len(op.cmps))
 	for i := range op.cmps {
 		cmps[i] = op.cmps[i].Compare
 	}
-	return &pb.TxnRequest{Table: []byte(table), Compare: cmps, Success: thenOps, Failure: elseOps}
+	return &regattapb.TxnRequest{Table: []byte(table), Compare: cmps, Success: thenOps, Failure: elseOps}
 }
 
-func (op *Op) toRequestOp() *pb.RequestOp {
+func (op *Op) toRequestOp() *regattapb.RequestOp {
 	switch op.t {
 	case tRange:
-		r := &pb.RequestOp_Range{
+		r := &regattapb.RequestOp_Range{
 			Key:       op.key,
 			RangeEnd:  op.end,
 			Limit:     op.limit,
 			KeysOnly:  op.keysOnly,
 			CountOnly: op.countOnly,
 		}
-		return &pb.RequestOp{Request: &pb.RequestOp_RequestRange{RequestRange: r}}
+		return &regattapb.RequestOp{Request: &regattapb.RequestOp_RequestRange{RequestRange: r}}
 	case tPut:
-		r := &pb.RequestOp_Put{Key: op.key, Value: op.val, PrevKv: op.prevKV}
-		return &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: r}}
+		r := &regattapb.RequestOp_Put{Key: op.key, Value: op.val, PrevKv: op.prevKV}
+		return &regattapb.RequestOp{Request: &regattapb.RequestOp_RequestPut{RequestPut: r}}
 	case tDeleteRange:
-		r := &pb.RequestOp_DeleteRange{Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
-		return &pb.RequestOp{Request: &pb.RequestOp_RequestDeleteRange{RequestDeleteRange: r}}
+		r := &regattapb.RequestOp_DeleteRange{Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
+		return &regattapb.RequestOp{Request: &regattapb.RequestOp_RequestDeleteRange{RequestDeleteRange: r}}
 	default:
 		panic(fmt.Sprintf("unsupported transaction op type %d", op.t))
 	}
@@ -378,33 +378,33 @@ const (
 )
 
 type Cmp struct {
-	*pb.Compare
+	*regattapb.Compare
 }
 
 func Compare(cmp Cmp, result string, v interface{}) Cmp {
-	var r pb.Compare_CompareResult
+	var r regattapb.Compare_CompareResult
 
 	switch result {
 	case "=":
-		r = pb.Compare_EQUAL
+		r = regattapb.Compare_EQUAL
 	case "!=":
-		r = pb.Compare_NOT_EQUAL
+		r = regattapb.Compare_NOT_EQUAL
 	case ">":
-		r = pb.Compare_GREATER
+		r = regattapb.Compare_GREATER
 	case "<":
-		r = pb.Compare_LESS
+		r = regattapb.Compare_LESS
 	default:
 		panic("Unknown result op")
 	}
 
 	cmp.Result = r
 	switch cmp.Target {
-	case pb.Compare_VALUE:
+	case regattapb.Compare_VALUE:
 		val, ok := v.(string)
 		if !ok {
 			panic("bad compare value")
 		}
-		cmp.TargetUnion = &pb.Compare_Value{Value: []byte(val)}
+		cmp.TargetUnion = &regattapb.Compare_Value{Value: []byte(val)}
 	default:
 		panic("Unknown compare type")
 	}
@@ -412,9 +412,9 @@ func Compare(cmp Cmp, result string, v interface{}) Cmp {
 }
 
 func Value(key string) Cmp {
-	cmp := Cmp{Compare: &pb.Compare{}}
+	cmp := Cmp{Compare: &regattapb.Compare{}}
 	cmp.Key = []byte(key)
-	cmp.Target = pb.Compare_VALUE
+	cmp.Target = regattapb.Compare_VALUE
 	return cmp
 }
 
@@ -429,7 +429,7 @@ func (cmp Cmp) WithKeyBytes(key []byte) Cmp {
 
 // ValueBytes returns the byte slice holding the comparison value, if any.
 func (cmp Cmp) ValueBytes() []byte {
-	if tu, ok := cmp.TargetUnion.(*pb.Compare_Value); ok {
+	if tu, ok := cmp.TargetUnion.(*regattapb.Compare_Value); ok {
 		return tu.Value
 	}
 	return nil
@@ -437,7 +437,7 @@ func (cmp Cmp) ValueBytes() []byte {
 
 // WithValueBytes sets the byte slice for the comparison's value.
 func (cmp Cmp) WithValueBytes(v []byte) Cmp {
-	cmp.TargetUnion.(*pb.Compare_Value).Value = v
+	cmp.TargetUnion.(*regattapb.Compare_Value).Value = v
 	return cmp
 }
 

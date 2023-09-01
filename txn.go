@@ -6,7 +6,7 @@ import (
 	"context"
 	"sync"
 
-	pb "github.com/jamf/regatta-go/client/internal/proto"
+	"github.com/jamf/regatta-go/internal/proto"
 	"google.golang.org/grpc"
 )
 
@@ -41,10 +41,10 @@ type txn struct {
 
 	isWrite bool
 
-	cmps []*pb.Compare
-	sus  []*pb.RequestOp
+	cmps []*regattapb.Compare
+	sus  []*regattapb.RequestOp
 
-	fas      []*pb.RequestOp
+	fas      []*regattapb.RequestOp
 	callOpts []grpc.CallOption
 }
 
@@ -116,9 +116,9 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 	txn.mu.Lock()
 	defer txn.mu.Unlock()
 
-	r := &pb.TxnRequest{Table: []byte(txn.table), Compare: txn.cmps, Success: txn.sus, Failure: txn.fas}
+	r := &regattapb.TxnRequest{Table: []byte(txn.table), Compare: txn.cmps, Success: txn.sus, Failure: txn.fas}
 
-	var resp *pb.TxnResponse
+	var resp *regattapb.TxnResponse
 	var err error
 	resp, err = txn.kv.remote.Txn(txn.ctx, r, txn.callOpts...)
 	if err != nil {

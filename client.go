@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jamf/regatta-go/client/credentials"
-	"github.com/jamf/regatta-go/client/internal/endpoint"
-	"github.com/jamf/regatta-go/client/internal/resolver"
+	"github.com/jamf/regatta-go/credentials"
+	"github.com/jamf/regatta-go/internal/endpoint"
+	"github.com/jamf/regatta-go/internal/resolver"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	grpccredentials "google.golang.org/grpc/credentials"

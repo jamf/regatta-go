@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/jamf/regatta-go/client/internal/snappy"
+	"github.com/jamf/regatta-go/internal/snappy"
 	"google.golang.org/grpc"
 )
 

@@ -6,14 +6,14 @@ import (
 	"context"
 	"fmt"
 
-	pb "github.com/jamf/regatta-go/client/internal/proto"
+	"github.com/jamf/regatta-go/internal/proto"
 	"google.golang.org/grpc"
 )
 
 type (
-	Member             pb.Member
-	MemberListResponse pb.MemberListResponse
-	StatusResponse     pb.StatusResponse
+	Member             regattapb.Member
+	MemberListResponse regattapb.MemberListResponse
+	StatusResponse     regattapb.StatusResponse
 )
 
 type Cluster interface {
@@ -24,22 +24,22 @@ type Cluster interface {
 }
 
 type cluster struct {
-	remote   pb.ClusterClient
-	dial     func(endpoint string) (pb.ClusterClient, func(), error)
+	remote   regattapb.ClusterClient
+	dial     func(endpoint string) (regattapb.ClusterClient, func(), error)
 	callOpts []grpc.CallOption
 }
 
 func newCluster(c *Client) Cluster {
 	api := &cluster{
-		remote: &retryClusterClient{cc: pb.NewClusterClient(c.conn)},
-		dial: func(endpoint string) (pb.ClusterClient, func(), error) {
+		remote: &retryClusterClient{cc: regattapb.NewClusterClient(c.conn)},
+		dial: func(endpoint string) (regattapb.ClusterClient, func(), error) {
 			conn, err := c.Dial(endpoint)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to dial endpoint %s with maintenance client: %v", endpoint, err)
 			}
 
 			cancel := func() { conn.Close() }
-			return &retryClusterClient{cc: pb.NewClusterClient(c.conn)}, cancel, nil
+			return &retryClusterClient{cc: regattapb.NewClusterClient(c.conn)}, cancel, nil
 		},
 	}
 	if c != nil {
@@ -48,7 +48,7 @@ func newCluster(c *Client) Cluster {
 	return api
 }
 
-func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
+func NewClusterFromClusterClient(remote regattapb.ClusterClient, c *Client) Cluster {
 	api := &cluster{remote: remote}
 	if c != nil {
 		api.callOpts = c.callOpts
@@ -58,7 +58,7 @@ func NewClusterFromClusterClient(remote pb.ClusterClient, c *Client) Cluster {
 
 func (c *cluster) MemberList(ctx context.Context, opts ...OpOption) (*MemberListResponse, error) {
 	opt := OpGet("", opts...)
-	resp, err := c.remote.MemberList(ctx, &pb.MemberListRequest{Linearizable: !opt.serializable}, c.callOpts...)
+	resp, err := c.remote.MemberList(ctx, &regattapb.MemberListRequest{Linearizable: !opt.serializable}, c.callOpts...)
 	if err == nil {
 		return (*MemberListResponse)(resp), nil
 	}
@@ -71,7 +71,7 @@ func (c *cluster) Status(ctx context.Context, endpoint string) (*StatusResponse,
 		return nil, toErr(ctx, err)
 	}
 	defer cancel()
-	resp, err := remote.Status(ctx, &pb.StatusRequest{}, c.callOpts...)
+	resp, err := remote.Status(ctx, &regattapb.StatusRequest{}, c.callOpts...)
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
@@ -79,13 +79,13 @@ func (c *cluster) Status(ctx context.Context, endpoint string) (*StatusResponse,
 }
 
 type retryClusterClient struct {
-	cc pb.ClusterClient
+	cc regattapb.ClusterClient
 }
 
-func (r *retryClusterClient) MemberList(ctx context.Context, in *pb.MemberListRequest, opts ...grpc.CallOption) (resp *pb.MemberListResponse, err error) {
+func (r *retryClusterClient) MemberList(ctx context.Context, in *regattapb.MemberListRequest, opts ...grpc.CallOption) (resp *regattapb.MemberListResponse, err error) {
 	return r.cc.MemberList(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
-func (r *retryClusterClient) Status(ctx context.Context, in *pb.StatusRequest, opts ...grpc.CallOption) (*pb.StatusResponse, error) {
+func (r *retryClusterClient) Status(ctx context.Context, in *regattapb.StatusRequest, opts ...grpc.CallOption) (*regattapb.StatusResponse, error) {
 	return r.cc.Status(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }

@@ -7,15 +7,15 @@ import (
 	"math/rand"
 	"time"
 
-	pb "github.com/jamf/regatta-go/client/internal/proto"
+	"github.com/jamf/regatta-go/internal/proto"
 	"google.golang.org/grpc"
 )
 
 type (
-	PutResponse    pb.PutResponse
-	GetResponse    pb.RangeResponse
-	DeleteResponse pb.DeleteRangeResponse
-	TxnResponse    pb.TxnResponse
+	PutResponse    regattapb.PutResponse
+	GetResponse    regattapb.RangeResponse
+	DeleteResponse regattapb.DeleteRangeResponse
+	TxnResponse    regattapb.TxnResponse
 )
 
 type Table interface {
@@ -105,12 +105,12 @@ func (resp *TxnResponse) OpResponse() OpResponse {
 }
 
 type kv struct {
-	remote   pb.KVClient
+	remote   regattapb.KVClient
 	callOpts []grpc.CallOption
 }
 
 func newKV(c *Client) KV {
-	return &kv{remote: &retryKVClient{client: pb.NewKVClient(c.conn)}, callOpts: c.callOpts}
+	return &kv{remote: &retryKVClient{client: regattapb.NewKVClient(c.conn)}, callOpts: c.callOpts}
 }
 
 func (kv *kv) Put(ctx context.Context, table, key, val string, opts ...OpOption) (*PutResponse, error) {
@@ -149,27 +149,27 @@ func (kv *kv) Do(ctx context.Context, table string, op Op) (OpResponse, error) {
 	var err error
 	switch op.t {
 	case tRange:
-		var resp *pb.RangeResponse
+		var resp *regattapb.RangeResponse
 		resp, err = kv.remote.Range(ctx, op.toRangeRequest(table), kv.callOpts...)
 		if err == nil {
 			return OpResponse{get: (*GetResponse)(resp)}, nil
 		}
 	case tPut:
-		var resp *pb.PutResponse
-		r := &pb.PutRequest{Table: []byte(table), Key: op.key, Value: op.val, PrevKv: op.prevKV}
+		var resp *regattapb.PutResponse
+		r := &regattapb.PutRequest{Table: []byte(table), Key: op.key, Value: op.val, PrevKv: op.prevKV}
 		resp, err = kv.remote.Put(ctx, r, kv.callOpts...)
 		if err == nil {
 			return OpResponse{put: (*PutResponse)(resp)}, nil
 		}
 	case tDeleteRange:
-		var resp *pb.DeleteRangeResponse
-		r := &pb.DeleteRangeRequest{Table: []byte(table), Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
+		var resp *regattapb.DeleteRangeResponse
+		r := &regattapb.DeleteRangeRequest{Table: []byte(table), Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
 		resp, err = kv.remote.DeleteRange(ctx, r, kv.callOpts...)
 		if err == nil {
 			return OpResponse{del: (*DeleteResponse)(resp)}, nil
 		}
 	case tTxn:
-		var resp *pb.TxnResponse
+		var resp *regattapb.TxnResponse
 		resp, err = kv.remote.Txn(ctx, op.toTxnRequest(table), kv.callOpts...)
 		if err == nil {
 			return OpResponse{txn: (*TxnResponse)(resp)}, nil
@@ -211,22 +211,22 @@ func (t *table) Txn(ctx context.Context) Txn {
 }
 
 type retryKVClient struct {
-	client pb.KVClient
+	client regattapb.KVClient
 }
 
-func (rkv *retryKVClient) Range(ctx context.Context, in *pb.RangeRequest, opts ...grpc.CallOption) (resp *pb.RangeResponse, err error) {
+func (rkv *retryKVClient) Range(ctx context.Context, in *regattapb.RangeRequest, opts ...grpc.CallOption) (resp *regattapb.RangeResponse, err error) {
 	return rkv.client.Range(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
-func (rkv *retryKVClient) Put(ctx context.Context, in *pb.PutRequest, opts ...grpc.CallOption) (resp *pb.PutResponse, err error) {
+func (rkv *retryKVClient) Put(ctx context.Context, in *regattapb.PutRequest, opts ...grpc.CallOption) (resp *regattapb.PutResponse, err error) {
 	return rkv.client.Put(ctx, in, opts...)
 }
 
-func (rkv *retryKVClient) DeleteRange(ctx context.Context, in *pb.DeleteRangeRequest, opts ...grpc.CallOption) (resp *pb.DeleteRangeResponse, err error) {
+func (rkv *retryKVClient) DeleteRange(ctx context.Context, in *regattapb.DeleteRangeRequest, opts ...grpc.CallOption) (resp *regattapb.DeleteRangeResponse, err error) {
 	return rkv.client.DeleteRange(ctx, in, opts...)
 }
 
-func (rkv *retryKVClient) Txn(ctx context.Context, in *pb.TxnRequest, opts ...grpc.CallOption) (resp *pb.TxnResponse, err error) {
+func (rkv *retryKVClient) Txn(ctx context.Context, in *regattapb.TxnRequest, opts ...grpc.CallOption) (resp *regattapb.TxnResponse, err error) {
 	return rkv.client.Txn(ctx, in, opts...)
 }
 

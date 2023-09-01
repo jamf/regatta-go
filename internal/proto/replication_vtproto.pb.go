@@ -6,9 +6,10 @@ package regattapb
 
 import (
 	fmt "fmt"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	io "io"
 	sync "sync"
+
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
