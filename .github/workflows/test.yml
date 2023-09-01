@@ -3,7 +3,7 @@ name: Test
 on:
   push:
     branches:
-    - master
+    - main
   pull_request:
   workflow_dispatch:
   issue_comment:
@@ -30,12 +30,11 @@ jobs:
     - name: Test
       run: |
         go test -v -cover ./... -coverprofile coverage.out -coverpkg ./...
-#    TODO uncomment once repo is public
-#    - name: Coverage track
-#      uses: coverallsapp/github-action@v2
-#      with:
-#        format: golang
-#        file: coverage.out
+    - name: Coverage track
+      uses: coverallsapp/github-action@v2
+      with:
+        format: golang
+        file: coverage.out
   build:
     if: (github.event.issue.pull_request != '' && contains(github.event.comment.body, '/test')) || github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -66,5 +65,3 @@ jobs:
       with:
         go-version: ${{ steps.go-version.outputs.go-version }}
         package: ./...
-        # TODO remove once repo is public
-        skip-upload: true
