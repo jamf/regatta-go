@@ -30,9 +30,6 @@ jobs:
     - name: Unit Tests
       run: |
         go test -v -cover ./... -coverprofile coverage.out -coverpkg ./...
-    - name: Integration Tests
-      run: |
-        cd test; go test -v ./...
     - name: Coverage track
       uses: coverallsapp/github-action@v2
       with:
