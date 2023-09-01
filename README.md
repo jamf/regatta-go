@@ -3,7 +3,7 @@
 [![tag](https://img.shields.io/github/tag/jamf/regatta-go.svg)](https://github.com/jamf/regatta-go/releases)
 ![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.20-%23007d9c)
 ![Build Status](https://github.com/jamf/regatta-go/actions/workflows/test.yml/badge.svg)
-[![Coverage Status](https://coveralls.io/repos/github/jamf/regatta-go/badge.svg)](https://coveralls.io/github/jamf/regatta-go)
+[![Coverage Status](https://coveralls.io/repos/github/jamf/regatta-go/badge.svg?branch=main)](https://coveralls.io/github/jamf/regatta-go?branch=main)
 [![Go report](https://goreportcard.com/badge/github.com/jamf/regatta-go)](https://goreportcard.com/report/github.com/jamf/regatta-go)
 [![Contributors](https://img.shields.io/github/contributors/jamf/regatta-go)](https://github.com/jamf/regatta-go/graphs/contributors)
 [![License](https://img.shields.io/github/license/jamf/regatta-go)](LICENSE)
