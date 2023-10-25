@@ -124,5 +124,9 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 	if err != nil {
 		return nil, toErr(txn.ctx, err)
 	}
-	return (*TxnResponse)(resp), nil
+	return &TxnResponse{
+		Header:    (*ResponseHeader)(resp.Header),
+		Succeeded: resp.Succeeded,
+		Responses: convResponseOps(resp.Responses),
+	}, nil
 }

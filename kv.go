@@ -37,12 +37,12 @@ type DeleteResponse struct {
 }
 
 type TxnResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
+	Header *ResponseHeader `json:"header,omitempty"`
 	// succeeded is set to true if the compare evaluated to true or false otherwise.
-	Succeeded bool `protobuf:"varint,2,opt,name=succeeded,proto3" json:"succeeded,omitempty"`
+	Succeeded bool `json:"succeeded,omitempty"`
 	// responses is a list of responses corresponding to the results from applying
 	// success if succeeded is true or failure if succeeded is false.
-	Responses []*ResponseOp `protobuf:"bytes,3,rep,name=responses,proto3" json:"responses,omitempty"`
+	Responses []*ResponseOp `json:"responses,omitempty"`
 }
 
 type PutResponse struct {
