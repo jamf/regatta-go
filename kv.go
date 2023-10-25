@@ -12,11 +12,44 @@ import (
 )
 
 type (
-	PutResponse    regattapb.PutResponse
-	GetResponse    regattapb.RangeResponse
-	DeleteResponse regattapb.DeleteRangeResponse
-	TxnResponse    regattapb.TxnResponse
+	KeyValue       regattapb.KeyValue
+	ResponseHeader regattapb.ResponseHeader
+	ResponseOp     regattapb.ResponseOp
 )
+
+type GetResponse struct {
+	Header *ResponseHeader `json:"header,omitempty"`
+	// kvs is the list of key-value pairs matched by the range request.
+	// kvs is empty when count is requested.
+	Kvs []*KeyValue `json:"kvs,omitempty"`
+	// more indicates if there are more keys to return in the requested range.
+	More bool `json:"more,omitempty"`
+	// count is set to the number of keys within the range when requested.
+	Count int64 `json:"count,omitempty"`
+}
+
+type DeleteResponse struct {
+	Header *ResponseHeader `json:"header,omitempty"`
+	// deleted is the number of keys deleted by the delete range request.
+	Deleted int64 `json:"deleted,omitempty"`
+	// if prev_kv is set in the request, the previous key-value pairs will be returned.
+	PrevKvs []*KeyValue `json:"prev_kvs,omitempty"`
+}
+
+type TxnResponse struct {
+	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
+	// succeeded is set to true if the compare evaluated to true or false otherwise.
+	Succeeded bool `protobuf:"varint,2,opt,name=succeeded,proto3" json:"succeeded,omitempty"`
+	// responses is a list of responses corresponding to the results from applying
+	// success if succeeded is true or failure if succeeded is false.
+	Responses []*ResponseOp `protobuf:"bytes,3,rep,name=responses,proto3" json:"responses,omitempty"`
+}
+
+type PutResponse struct {
+	Header *ResponseHeader `json:"header,omitempty"`
+	// if prev_kv is set in the request, the previous key-value pair will be returned.
+	PrevKv *KeyValue `json:"prev_kv,omitempty"`
+}
 
 type Table interface {
 	// Put puts a key-value pair into regatta.
@@ -152,32 +185,62 @@ func (kv *kv) Do(ctx context.Context, table string, op Op) (OpResponse, error) {
 		var resp *regattapb.RangeResponse
 		resp, err = kv.remote.Range(ctx, op.toRangeRequest(table), kv.callOpts...)
 		if err == nil {
-			return OpResponse{get: (*GetResponse)(resp)}, nil
+			return OpResponse{get: &GetResponse{
+				Header: (*ResponseHeader)(resp.Header),
+				Kvs:    convKeyValues(resp.Kvs),
+				More:   resp.More,
+				Count:  resp.Count,
+			}}, nil
 		}
 	case tPut:
 		var resp *regattapb.PutResponse
 		r := &regattapb.PutRequest{Table: []byte(table), Key: op.key, Value: op.val, PrevKv: op.prevKV}
 		resp, err = kv.remote.Put(ctx, r, kv.callOpts...)
 		if err == nil {
-			return OpResponse{put: (*PutResponse)(resp)}, nil
+			return OpResponse{put: &PutResponse{
+				Header: (*ResponseHeader)(resp.Header),
+				PrevKv: (*KeyValue)(resp.PrevKv),
+			}}, nil
 		}
 	case tDeleteRange:
 		var resp *regattapb.DeleteRangeResponse
 		r := &regattapb.DeleteRangeRequest{Table: []byte(table), Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
 		resp, err = kv.remote.DeleteRange(ctx, r, kv.callOpts...)
 		if err == nil {
-			return OpResponse{del: (*DeleteResponse)(resp)}, nil
+			return OpResponse{del: &DeleteResponse{
+				Header:  (*ResponseHeader)(resp.Header),
+				Deleted: resp.Deleted,
+				PrevKvs: convKeyValues(resp.PrevKvs),
+			}}, nil
 		}
 	case tTxn:
 		var resp *regattapb.TxnResponse
 		resp, err = kv.remote.Txn(ctx, op.toTxnRequest(table), kv.callOpts...)
 		if err == nil {
-			return OpResponse{txn: (*TxnResponse)(resp)}, nil
+			return OpResponse{txn: &TxnResponse{
+				Header:    (*ResponseHeader)(resp.Header),
+				Succeeded: resp.Succeeded,
+				Responses: convResponseOps(resp.Responses),
+			}}, nil
 		}
 	default:
 		panic("Unknown op")
 	}
 	return OpResponse{}, toErr(ctx, err)
+}
+
+func convResponseOps(in []*regattapb.ResponseOp) (out []*ResponseOp) {
+	for _, t := range in {
+		out = append(out, (*ResponseOp)(t))
+	}
+	return
+}
+
+func convKeyValues(in []*regattapb.KeyValue) (out []*KeyValue) {
+	for _, t := range in {
+		out = append(out, (*KeyValue)(t))
+	}
+	return
 }
 
 type table struct {
