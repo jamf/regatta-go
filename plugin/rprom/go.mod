@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/jamf/regatta-go v0.0.0-20231027105726-1fbcbc740cd0
 	github.com/prometheus/client_golang v1.17.0
+	google.golang.org/grpc v1.58.3
 )
 
 require (
@@ -20,6 +21,5 @@ require (
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
-	google.golang.org/grpc v1.58.2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
