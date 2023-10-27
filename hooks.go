@@ -58,11 +58,14 @@ type HookHandleConn interface {
 	OnHandleConn(context.Context, stats.ConnStats)
 }
 
-// implementsAnyHook will check the incoming Hook for any Hook implementation
+// implementsAnyHook will check the incoming Hook for any Hook implementation.
 func implementsAnyHook(h Hook) bool {
 	switch h.(type) {
-	case HookNewClient,
-		HookClientClosed:
+	case
+		HookNewClient,
+		HookClientClosed,
+		HookHandleRPC,
+		HookHandleConn:
 		return true
 	}
 	return false
