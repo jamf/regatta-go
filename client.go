@@ -19,6 +19,7 @@ import (
 	grpccredentials "google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
 )
 
@@ -54,6 +55,26 @@ type Client struct {
 
 	lgMu sync.RWMutex
 	lg   Logger
+}
+
+func (c *Client) TagRPC(ctx context.Context, info *stats.RPCTagInfo) context.Context {
+	return ctx
+}
+
+func (c *Client) HandleRPC(ctx context.Context, stats stats.RPCStats) {
+	callHooks(c.cfg.Hooks, func(h HookHandleRPC) {
+		h.OnHandleRPC(ctx, stats)
+	})
+}
+
+func (c *Client) TagConn(ctx context.Context, info *stats.ConnTagInfo) context.Context {
+	return ctx
+}
+
+func (c *Client) HandleConn(ctx context.Context, stats stats.ConnStats) {
+	callHooks(c.cfg.Hooks, func(h HookHandleConn) {
+		h.OnHandleConn(ctx, stats)
+	})
 }
 
 // New creates a new regatta client from a given configuration.
@@ -231,7 +252,7 @@ func (c *Client) Dial(ep string) (*grpc.ClientConn, error) {
 // of the provided endpoint determines the scheme used for all endpoints of the client connection.
 func (c *Client) dialWithBalancer(dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	creds := c.credentialsForEndpoint(c.Endpoints()[0])
-	opts := append(dopts, grpc.WithResolvers(c.resolver))
+	opts := append(dopts, grpc.WithStatsHandler(c), grpc.WithResolvers(c.resolver))
 	return c.dial(creds, opts...)
 }
 
