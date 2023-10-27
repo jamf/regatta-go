@@ -1,4 +1,4 @@
-module github.com/jamf/regatta-go/rprom
+module github.com/jamf/regatta-go/plugin/rprom
 
 go 1.20
 

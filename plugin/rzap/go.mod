@@ -1,4 +1,4 @@
-module github.com/jamf/regatta-go/rzap
+module github.com/jamf/regatta-go/plugin/rzap
 
 go 1.21
 
