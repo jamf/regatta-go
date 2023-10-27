@@ -5,6 +5,7 @@ package client
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"time"
 
 	"google.golang.org/grpc"
@@ -63,6 +64,8 @@ type Config struct {
 
 	// RejectOldCluster when set will refuse to create a client against an outdated cluster.
 	RejectOldCluster bool `json:"reject-old-cluster"`
+
+	Hooks []Hook
 }
 
 // ConfigSpec is the configuration from users, which comes from command-line flags,
@@ -149,4 +152,22 @@ func newTLSConfig(scfg *SecureConfig, lg Logger) (*tls.Config, error) {
 	}
 
 	return tlsCfg, nil
+}
+
+func processHooks(hooks []Hook) ([]Hook, error) {
+	var processedHooks []Hook
+	for _, hook := range hooks {
+		if implementsAnyHook(hook) {
+			processedHooks = append(processedHooks, hook)
+		} else if moreHooks, ok := hook.([]Hook); ok {
+			more, err := processHooks(moreHooks)
+			if err != nil {
+				return nil, err
+			}
+			processedHooks = append(processedHooks, more...)
+		} else {
+			return nil, errors.New("found an argument that implements no hook interfaces")
+		}
+	}
+	return processedHooks, nil
 }

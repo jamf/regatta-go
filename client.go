@@ -112,6 +112,11 @@ func (c *Client) SetLogger(lg Logger) *Client {
 
 // Close shuts down the client's regatta connections.
 func (c *Client) Close() error {
+	defer func() {
+		callHooks(c.cfg.Hooks, func(h HookClientClosed) {
+			h.OnClientClosed(c)
+		})
+	}()
 	c.cancel()
 	if c.conn != nil {
 		return toErr(c.ctx, c.conn.Close())
@@ -336,6 +341,16 @@ func newClient(cfg *Config) (*Client, error) {
 		}
 		client.callOpts = callOpts
 	}
+
+	processedHooks, err := processHooks(cfg.Hooks)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Hooks = processedHooks
+
+	callHooks(cfg.Hooks, func(h HookNewClient) {
+		h.OnNewClient(client)
+	})
 
 	client.resolver = resolver.New(cfg.Endpoints...)
 
