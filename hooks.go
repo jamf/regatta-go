@@ -22,6 +22,16 @@ import (
 // to take time, then copy what you need and ensure the hook is async.
 type Hook any
 
+func getHooks[T Hook](hs []Hook) []T {
+	var ret []T
+	for _, h := range hs {
+		if h, ok := h.(T); ok {
+			ret = append(ret, h)
+		}
+	}
+	return ret
+}
+
 func callHooks[T Hook](hs []Hook, fn func(T)) {
 	for _, h := range hs {
 		if h, ok := h.(T); ok {
@@ -58,6 +68,12 @@ type HookHandleConn interface {
 	OnHandleConn(context.Context, stats.ConnStats)
 }
 
+type KvDo func(context.Context, string, Op) (OpResponse, error)
+
+type HookKVOpDo interface {
+	OnKVCall(context.Context, string, Op, KvDo) (OpResponse, error)
+}
+
 // implementsAnyHook will check the incoming Hook for any Hook implementation.
 func implementsAnyHook(h Hook) bool {
 	switch h.(type) {
@@ -65,7 +81,8 @@ func implementsAnyHook(h Hook) bool {
 		HookNewClient,
 		HookClientClosed,
 		HookHandleRPC,
-		HookHandleConn:
+		HookHandleConn,
+		HookKVOpDo:
 		return true
 	}
 	return false

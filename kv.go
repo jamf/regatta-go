@@ -137,13 +137,26 @@ func (resp *TxnResponse) OpResponse() OpResponse {
 	return OpResponse{txn: resp}
 }
 
+type hookedKV struct {
+	KV
+	hook HookKVOpDo
+}
+
+func (kv *hookedKV) Do(ctx context.Context, table string, op Op) (OpResponse, error) {
+	return kv.hook.OnKVCall(ctx, table, op, kv.KV.Do)
+}
+
 type kv struct {
 	remote   regattapb.KVClient
 	callOpts []grpc.CallOption
 }
 
 func newKV(c *Client) KV {
-	return &kv{remote: &retryKVClient{client: regattapb.NewKVClient(c.conn)}, callOpts: c.callOpts}
+	var k KV = &kv{remote: &retryKVClient{client: regattapb.NewKVClient(c.conn)}, callOpts: c.callOpts}
+	for _, h := range getHooks[HookKVOpDo](c.cfg.Hooks) {
+		k = &hookedKV{KV: k, hook: h}
+	}
+	return k
 }
 
 func (kv *kv) Put(ctx context.Context, table, key, val string, opts ...OpOption) (*PutResponse, error) {
