@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jamf/regatta-go"
+	client "github.com/jamf/regatta-go"
 )
 
 func main() {
