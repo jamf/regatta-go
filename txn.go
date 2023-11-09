@@ -5,9 +5,6 @@ package client
 import (
 	"context"
 	"sync"
-
-	"github.com/jamf/regatta-go/internal/proto"
-	"google.golang.org/grpc"
 )
 
 type Txn interface {
@@ -29,7 +26,7 @@ type Txn interface {
 }
 
 type txn struct {
-	kv    *kv
+	kv    KV
 	ctx   context.Context
 	table string
 
@@ -41,11 +38,9 @@ type txn struct {
 
 	isWrite bool
 
-	cmps []*regattapb.Compare
-	sus  []*regattapb.RequestOp
-
-	fas      []*regattapb.RequestOp
-	callOpts []grpc.CallOption
+	cmps []Cmp
+	sus  []Op
+	fas  []Op
 }
 
 func (txn *txn) If(cs ...Cmp) Txn {
@@ -66,9 +61,7 @@ func (txn *txn) If(cs ...Cmp) Txn {
 
 	txn.cif = true
 
-	for i := range cs {
-		txn.cmps = append(txn.cmps, cs[i].Compare)
-	}
+	txn.cmps = append(txn.cmps, cs...)
 
 	return txn
 }
@@ -88,7 +81,7 @@ func (txn *txn) Then(ops ...Op) Txn {
 
 	for _, op := range ops {
 		txn.isWrite = txn.isWrite || op.isWrite()
-		txn.sus = append(txn.sus, op.toRequestOp())
+		txn.sus = append(txn.sus, op)
 	}
 
 	return txn
@@ -106,7 +99,7 @@ func (txn *txn) Else(ops ...Op) Txn {
 
 	for _, op := range ops {
 		txn.isWrite = txn.isWrite || op.isWrite()
-		txn.fas = append(txn.fas, op.toRequestOp())
+		txn.fas = append(txn.fas, op)
 	}
 
 	return txn
@@ -116,17 +109,17 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 	txn.mu.Lock()
 	defer txn.mu.Unlock()
 
-	r := &regattapb.TxnRequest{Table: []byte(txn.table), Compare: txn.cmps, Success: txn.sus, Failure: txn.fas}
-
-	var resp *regattapb.TxnResponse
-	var err error
-	resp, err = txn.kv.remote.Txn(txn.ctx, r, txn.callOpts...)
+	do, err := txn.kv.Do(txn.ctx, txn.table, OpTxn(txn.cmps, txn.sus, txn.fas))
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return nil, toErr(txn.ctx, err)
 	}
+
 	return &TxnResponse{
-		Header:    (*ResponseHeader)(resp.Header),
-		Succeeded: resp.Succeeded,
-		Responses: convResponseOps(resp.Responses),
+		Header:    do.txn.Header,
+		Succeeded: do.txn.Succeeded,
+		Responses: do.txn.Responses,
 	}, nil
 }

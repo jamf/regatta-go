@@ -4,6 +4,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"math/rand"
 	"time"
 
@@ -28,12 +29,33 @@ type GetResponse struct {
 	Count int64 `json:"count,omitempty"`
 }
 
+func (resp *GetResponse) String() string {
+	enc, _ := json.Marshal(resp)
+	return string(enc)
+}
+
 type DeleteResponse struct {
 	Header *ResponseHeader `json:"header,omitempty"`
 	// deleted is the number of keys deleted by the delete range request.
 	Deleted int64 `json:"deleted,omitempty"`
 	// if prev_kv is set in the request, the previous key-value pairs will be returned.
 	PrevKvs []*KeyValue `json:"prev_kvs,omitempty"`
+}
+
+func (resp *DeleteResponse) String() string {
+	enc, _ := json.Marshal(resp)
+	return string(enc)
+}
+
+type PutResponse struct {
+	Header *ResponseHeader `json:"header,omitempty"`
+	// if prev_kv is set in the request, the previous key-value pair will be returned.
+	PrevKv *KeyValue `json:"prev_kv,omitempty"`
+}
+
+func (resp *PutResponse) String() string {
+	enc, _ := json.Marshal(resp)
+	return string(enc)
 }
 
 type TxnResponse struct {
@@ -45,10 +67,9 @@ type TxnResponse struct {
 	Responses []*ResponseOp `json:"responses,omitempty"`
 }
 
-type PutResponse struct {
-	Header *ResponseHeader `json:"header,omitempty"`
-	// if prev_kv is set in the request, the previous key-value pair will be returned.
-	PrevKv *KeyValue `json:"prev_kv,omitempty"`
+func (resp *TxnResponse) String() string {
+	enc, _ := json.Marshal(resp)
+	return string(enc)
 }
 
 type Table interface {
@@ -176,10 +197,9 @@ func (kv *kv) Delete(ctx context.Context, table, key string, opts ...OpOption) (
 
 func (kv *kv) Txn(ctx context.Context, table string) Txn {
 	return &txn{
-		kv:       kv,
-		ctx:      ctx,
-		table:    table,
-		callOpts: kv.callOpts,
+		kv:    kv,
+		ctx:   ctx,
+		table: table,
 	}
 }
 
@@ -257,7 +277,7 @@ func convKeyValues(in []*regattapb.KeyValue) (out []*KeyValue) {
 }
 
 type table struct {
-	kv       *kv
+	kv       KV
 	table    string
 	callOpts []grpc.CallOption
 }
@@ -279,10 +299,9 @@ func (t *table) Delete(ctx context.Context, key string, opts ...OpOption) (*Dele
 
 func (t *table) Txn(ctx context.Context) Txn {
 	return &txn{
-		kv:       t.kv,
-		ctx:      ctx,
-		table:    t.table,
-		callOpts: t.kv.callOpts,
+		kv:    t.kv,
+		ctx:   ctx,
+		table: t.table,
 	}
 }
 
