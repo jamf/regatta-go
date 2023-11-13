@@ -167,6 +167,21 @@ func (kv *hookedKV) Do(ctx context.Context, table string, op Op) (OpResponse, er
 	return kv.hook.OnKVCall(ctx, table, op, kv.KV.Do)
 }
 
+func (kv *hookedKV) Txn(ctx context.Context, table string) Txn {
+	return &txn{
+		kv:    kv,
+		ctx:   ctx,
+		table: table,
+	}
+}
+
+func (kv *hookedKV) Table(name string) Table {
+	return &table{
+		kv:    kv,
+		table: name,
+	}
+}
+
 type kv struct {
 	remote   regattapb.KVClient
 	callOpts []grpc.CallOption

@@ -1,6 +1,6 @@
 // Copyright JAMF Software, LLC
 
-package rprom
+package rotel
 
 import (
 	"runtime/debug"
