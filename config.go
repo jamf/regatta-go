@@ -11,36 +11,36 @@ import (
 	"google.golang.org/grpc"
 )
 
-type Config struct {
+type config struct {
 	// Endpoints is a list of URLs.
-	Endpoints []string `json:"endpoints"`
+	Endpoints []string
 
 	// AutoSyncInterval is the interval to update endpoints with its latest members.
 	// 0 disables auto-sync. By default, auto-sync is disabled.
-	AutoSyncInterval time.Duration `json:"auto-sync-interval"`
+	AutoSyncInterval time.Duration
 
 	// DialTimeout is the timeout for failing to establish a connection.
-	DialTimeout time.Duration `json:"dial-timeout"`
+	DialTimeout time.Duration
 
 	// DialKeepAliveTime is the time after which client pings the server to see if
 	// transport is alive.
-	DialKeepAliveTime time.Duration `json:"dial-keep-alive-time"`
+	DialKeepAliveTime time.Duration
 
 	// DialKeepAliveTimeout is the time that the client waits for a response for the
 	// keep-alive probe. If the response is not received in this time, the connection is closed.
-	DialKeepAliveTimeout time.Duration `json:"dial-keep-alive-timeout"`
+	DialKeepAliveTimeout time.Duration
 
 	// MaxCallSendMsgSize is the client-side request send limit in bytes.
 	// If 0, it defaults to 2.0 MiB (2 * 1024 * 1024).
 	// Make sure that "MaxCallSendMsgSize" < server-side default send/recv limit.
-	// ("--max-request-bytes" flag to regatta or "embed.Config.MaxRequestBytes").
+	// ("--api.max-request-bytes" flag to regatta or "embed.Config.MaxRequestBytes").
 	MaxCallSendMsgSize int
 
 	// MaxCallRecvMsgSize is the client-side response receive limit.
 	// If 0, it defaults to "math.MaxInt32", because range response can
 	// easily exceed request send limits.
 	// Make sure that "MaxCallRecvMsgSize" >= server-side default send/recv limit.
-	// ("--max-recv-bytes" flag to regatta).
+	// ("--api.max-recv-bytes" flag to regatta).
 	MaxCallRecvMsgSize int
 
 	// TLS holds the client secure credentials, if any.
@@ -60,10 +60,10 @@ type Config struct {
 	Logger Logger
 
 	// PermitWithoutStream when set will allow client to send keepalive pings to server without any active streams(RPCs).
-	PermitWithoutStream bool `json:"permit-without-stream"`
+	PermitWithoutStream bool
 
 	// RejectOldCluster when set will refuse to create a client against an outdated cluster.
-	RejectOldCluster bool `json:"reject-old-cluster"`
+	RejectOldCluster bool
 
 	Hooks []Hook
 }
@@ -80,6 +80,13 @@ type ConfigSpec struct {
 	Secure           *SecureConfig `json:"secure"`
 }
 
+func (s *ConfigSpec) EnsureDefaults() {
+	s.Logger = defaultLogger
+	s.DialTimeout = 5 * time.Second
+	s.KeepAliveTime = 30 * time.Second
+	s.KeepAliveTimeout = 5 * time.Second
+}
+
 type SecureConfig struct {
 	Cert       string `json:"cert"`
 	Key        string `json:"key"`
@@ -90,36 +97,26 @@ type SecureConfig struct {
 	InsecureSkipVerify bool `json:"insecure-skip-tls-verify"`
 }
 
-// NewClientConfig creates a Config based on the provided ConfigSpec.
-func NewClientConfig(confSpec *ConfigSpec) (*Config, error) {
-	if confSpec.Logger == nil {
-		confSpec.Logger = defaultLogger
-	}
-	tlsCfg, err := newTLSConfig(confSpec.Secure, confSpec)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := &Config{
+func newClientConfig(confSpec *ConfigSpec) *config {
+	confSpec.EnsureDefaults()
+	return &config{
 		Endpoints:            confSpec.Endpoints,
 		DialTimeout:          confSpec.DialTimeout,
 		DialKeepAliveTime:    confSpec.KeepAliveTime,
 		DialKeepAliveTimeout: confSpec.KeepAliveTimeout,
-		TLS:                  tlsCfg,
+		TLS:                  newTLSConfig(confSpec.Secure, confSpec.Logger),
 		Logger:               confSpec,
 	}
-
-	return cfg, nil
 }
 
-func newTLSConfig(scfg *SecureConfig, lg Logger) (*tls.Config, error) {
+func newTLSConfig(scfg *SecureConfig, lg Logger) *tls.Config {
 	var (
 		tlsCfg *tls.Config
 		err    error
 	)
 
 	if scfg == nil {
-		return nil, nil
+		return nil
 	}
 
 	if scfg.Cert != "" || scfg.Key != "" || scfg.Cacert != "" || scfg.ServerName != "" {
@@ -131,7 +128,7 @@ func newTLSConfig(scfg *SecureConfig, lg Logger) (*tls.Config, error) {
 			Logger:        lg,
 		}
 		if tlsCfg, err = cfgtls.ClientConfig(); err != nil {
-			return nil, err
+			panic(err)
 		}
 	}
 
@@ -151,7 +148,7 @@ func newTLSConfig(scfg *SecureConfig, lg Logger) (*tls.Config, error) {
 		tlsCfg.InsecureSkipVerify = scfg.InsecureSkipVerify
 	}
 
-	return tlsCfg, nil
+	return tlsCfg
 }
 
 func processHooks(hooks []Hook) ([]Hook, error) {
@@ -170,4 +167,80 @@ func processHooks(hooks []Hook) ([]Hook, error) {
 		}
 	}
 	return processedHooks, nil
+}
+
+// Option is a function type that can be passed as argument to New to configure client.
+type Option func(config *config)
+
+// WithDialOptions sets the list of dial options for the grpc client (e.g., for interceptors).
+// For example, pass "grpc.WithBlock()" to block until the underlying connection is up.
+// Without this, Dial returns immediately and connecting the server happens in background.
+func WithDialOptions(dial ...grpc.DialOption) Option {
+	return func(config *config) {
+		config.DialOptions = dial
+	}
+}
+
+// WithEndpoints sets the list of seed URLs.
+func WithEndpoints(endpoints ...string) Option {
+	return func(config *config) {
+		config.Endpoints = endpoints
+	}
+}
+
+// WithAutoSyncInterval is the interval to update endpoints with its latest members.
+// 0 disables auto-sync. By default, auto-sync is disabled.
+func WithAutoSyncInterval(interval time.Duration) Option {
+	return func(config *config) {
+		config.AutoSyncInterval = interval
+	}
+}
+
+// WithLogger sets client-side logger. Defaults to NOOp logger.
+func WithLogger(logger Logger) Option {
+	return func(config *config) {
+		config.Logger = logger
+	}
+}
+
+// WithHooks sets plugin hooks, check the plugin directory for available plugin modules.
+func WithHooks(hooks ...Hook) Option {
+	return func(config *config) {
+		config.Hooks = hooks
+	}
+}
+
+// WithSecureConfig sets the TLS and related configs.
+func WithSecureConfig(sc *SecureConfig) Option {
+	return func(config *config) {
+		config.TLS = newTLSConfig(sc, config.Logger)
+	}
+}
+
+// WithMaxCallRecvMsgSize sets the client-side response receive limit.
+// If 0, it defaults to "math.MaxInt32", because range response can
+// easily exceed request send limits.
+// Make sure that "MaxCallRecvMsgSize" >= server-side default send/recv limit.
+// ("--api.max-recv-bytes" flag to regatta).
+func WithMaxCallRecvMsgSize(max int) Option {
+	return func(config *config) {
+		config.MaxCallRecvMsgSize = max
+	}
+}
+
+// WithMaxCallSendMsgSize sets the client-side request send limit in bytes.
+// If 0, it defaults to 2.0 MiB (2 * 1024 * 1024).
+// Make sure that "MaxCallSendMsgSize" < server-side default send/recv limit.
+// ("--api.max-send-bytes" flag to regatta or "embed.Config.MaxRequestBytes").
+func WithMaxCallSendMsgSize(max int) Option {
+	return func(config *config) {
+		config.MaxCallSendMsgSize = max
+	}
+}
+
+// WithRejectOldCluster set will refuse to create a client against an outdated cluster.
+func WithRejectOldCluster(roc bool) Option {
+	return func(config *config) {
+		config.RejectOldCluster = roc
+	}
 }

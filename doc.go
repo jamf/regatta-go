@@ -5,7 +5,7 @@
 // Create client using `client.New`:
 //
 //	// expect dial time-out on blackhole address
-//	_, err := client.New(client.Config{
+//	_, err := client.New(client.ConfigSpec{
 //		Endpoints:   []string{"http://254.0.0.1:12345"},
 //		DialTimeout: 2 * time.Second,
 //	})
@@ -14,7 +14,7 @@
 //		// handle errors
 //	}
 //
-//	cli, err := client.New(client.Config{
+//	cli, err := client.New(client.ConfigSpec{
 //		Endpoints:   []string{"localhost:2379", "localhost:22379", "localhost:32379"},
 //		DialTimeout: 5 * time.Second,
 //	})

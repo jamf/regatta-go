@@ -25,7 +25,7 @@ import (
 
 func main() {
 	// Create the configuration
-	cc, err := client.NewClientConfig(&client.ConfigSpec{
+	c, err := client.New(&client.ConfigSpec{
 		Logger:      client.PrintLogger{}, // Logger override
 		Endpoints:   []string{"127.0.0.1:8443"}, // Seed of Regatta servers (other server will be discovered during initial connection)
 		DialTimeout: 5 * time.Second, // Dial timeout
@@ -33,10 +33,6 @@ func main() {
 			InsecureSkipVerify: true, // Skip verification of self-signed certificate
 		},
 	})
-	if err != nil {
-		panic(err)
-	}
-	c, err := client.New(cc) // Create the client out of the provided config
 	if err != nil {
 		panic(err)
 	}
