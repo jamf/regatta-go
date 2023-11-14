@@ -220,9 +220,8 @@ func (kv *kv) Txn(ctx context.Context, table string) Txn {
 
 func (kv *kv) Table(name string) Table {
 	return &table{
-		kv:       kv,
-		table:    name,
-		callOpts: kv.callOpts,
+		kv:    kv,
+		table: name,
 	}
 }
 
@@ -292,9 +291,8 @@ func convKeyValues(in []*regattapb.KeyValue) (out []*KeyValue) {
 }
 
 type table struct {
-	kv       KV
-	table    string
-	callOpts []grpc.CallOption
+	kv    KV
+	table string
 }
 
 func (t *table) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
