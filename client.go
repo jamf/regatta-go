@@ -39,7 +39,7 @@ type Client struct {
 
 	conn *grpc.ClientConn
 
-	cfg      Config
+	cfg      config
 	creds    grpccredentials.TransportCredentials
 	resolver *resolver.RegattaManualResolver
 
@@ -78,47 +78,33 @@ func (c *Client) HandleConn(ctx context.Context, stats stats.ConnStats) {
 }
 
 // New creates a new regatta client from a given configuration.
-func New(cfg *Config) (*Client, error) {
-	if len(cfg.Endpoints) == 0 {
+func New(spec *ConfigSpec, opts ...Option) (*Client, error) {
+	if len(spec.Endpoints) == 0 {
 		return nil, ErrNoAvailableEndpoints
 	}
-
+	cfg := newClientConfig(spec)
+	for _, opt := range opts {
+		opt(cfg)
+	}
 	return newClient(cfg)
 }
 
-// NewCtxClient creates a client with a context but no underlying grpc
-// connection. This is useful for embedded cases that override the
-// service interface implementations and do not need connection management.
-func NewCtxClient(ctx context.Context, opts ...Option) *Client {
-	cctx, cancel := context.WithCancel(ctx)
-	c := &Client{ctx: cctx, cancel: cancel}
-	for _, opt := range opts {
-		opt(c)
-	}
-	if c.lg == nil {
-		c.lg = defaultLogger
-	}
-	return c
-}
-
-// Option is a function type that can be passed as argument to NewCtxClient to configure client.
-type Option func(*Client)
-
 // NewFromURL creates a new regatta client from a URL.
-func NewFromURL(url string) (*Client, error) {
-	return New(&Config{Endpoints: []string{url}})
+func NewFromURL(url string, opts ...Option) (*Client, error) {
+	cfg := &config{Endpoints: []string{url}}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	return newClient(cfg)
 }
 
 // NewFromURLs creates a new regatta client from URLs.
-func NewFromURLs(urls []string) (*Client, error) {
-	return New(&Config{Endpoints: urls})
-}
-
-// WithLogger is a NewCtxClient option that overrides the logger.
-func WithLogger(lg Logger) Option {
-	return func(c *Client) {
-		c.lg = lg
+func NewFromURLs(urls []string, opts ...Option) (*Client, error) {
+	cfg := &config{Endpoints: urls}
+	for _, opt := range opts {
+		opt(cfg)
 	}
+	return newClient(cfg)
 }
 
 // SetLogger overrides the logger.
@@ -310,9 +296,9 @@ func (c *Client) credentialsForEndpoint(ep string) grpccredentials.TransportCred
 	}
 }
 
-func newClient(cfg *Config) (*Client, error) {
+func newClient(cfg *config) (*Client, error) {
 	if cfg == nil {
-		cfg = &Config{}
+		cfg = &config{}
 	}
 	var creds grpccredentials.TransportCredentials
 	if cfg.TLS != nil {
