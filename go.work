@@ -1,0 +1,9 @@
+go 1.20
+
+use (
+	.
+	plugin/rprom
+	plugin/rzap
+	plugin/rlogrus
+	plugin/rotel
+)
