@@ -13,7 +13,17 @@ type Logger interface {
 	Errorf(string, ...any)
 }
 
-var defaultLogger Logger = &PrintLogger{}
+var defaultLogger Logger = &NoOpLogger{}
+
+type NoOpLogger struct{}
+
+func (n NoOpLogger) Infof(s string, a ...any) {}
+
+func (n NoOpLogger) Debugf(s string, a ...any) {}
+
+func (n NoOpLogger) Warnf(s string, a ...any) {}
+
+func (n NoOpLogger) Errorf(s string, a ...any) {}
 
 type PrintLogger struct{}
 
