@@ -14,3 +14,30 @@ updates:
   reviewers:
   - "jamf/opensource-regatta-write"
 
+- package-ecosystem: "gomod"
+  directory: "/plugin/rlogrus"
+  schedule:
+    interval: "weekly"
+  reviewers:
+  - "jamf/opensource-regatta-write"
+
+- package-ecosystem: "gomod"
+  directory: "/plugin/rotel"
+  schedule:
+    interval: "weekly"
+  reviewers:
+  - "jamf/opensource-regatta-write"
+
+- package-ecosystem: "gomod"
+  directory: "/plugin/rprom"
+  schedule:
+    interval: "weekly"
+  reviewers:
+  - "jamf/opensource-regatta-write"
+
+- package-ecosystem: "gomod"
+  directory: "/plugin/rzap"
+  schedule:
+    interval: "weekly"
+  reviewers:
+  - "jamf/opensource-regatta-write"
