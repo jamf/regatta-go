@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/jamf/regatta-go v0.0.2
-	go.opentelemetry.io/otel v1.20.0
-	go.opentelemetry.io/otel/trace v1.20.0
+	go.opentelemetry.io/otel v1.21.0
+	go.opentelemetry.io/otel/trace v1.21.0
 )
 
 require (
@@ -13,7 +13,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/klauspost/compress v1.17.2 // indirect
-	go.opentelemetry.io/otel/metric v1.20.0 // indirect
+	go.opentelemetry.io/otel/metric v1.21.0 // indirect
 	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
