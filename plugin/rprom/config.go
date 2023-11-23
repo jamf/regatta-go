@@ -22,11 +22,10 @@ type cfg struct {
 }
 
 func newCfg(opts ...Opt) cfg {
-	reg := prometheus.NewRegistry()
 	cfg := cfg{
 		namespace:  DefNamespace,
-		reg:        reg,
-		gatherer:   reg,
+		reg:        prometheus.DefaultRegisterer,
+		gatherer:   prometheus.DefaultGatherer,
 		defBuckets: DefBuckets,
 	}
 
