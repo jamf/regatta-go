@@ -8,7 +8,8 @@
 [![Contributors](https://img.shields.io/github/contributors/jamf/regatta-go)](https://github.com/jamf/regatta-go/graphs/contributors)
 [![License](https://img.shields.io/github/license/jamf/regatta-go)](LICENSE)
 
-This repository hosts the code of **Regatta** client for Go language. For documentation and examples check the [godocs](https://godoc.org/github.com/jamf/regatta-go) page.
+This repository hosts the code of [**Regatta**](https://engineering.jamf.com/regatta/) client for Go language. For documentation and examples check the [godocs](https://godoc.org/github.com/jamf/regatta-go) page.
+Additional functionality like Prometheus metrics and OpenTelemetry tracing is provided using [plugins](https://github.com/jamf/regatta-go/tree/main/plugin).
 
 ## Example use
 
@@ -24,15 +25,14 @@ import (
 )
 
 func main() {
-	// Create the configuration
-	c, err := client.New(&client.ConfigSpec{
-		Logger:      client.PrintLogger{}, // Logger override
-		Endpoints:   []string{"127.0.0.1:8443"}, // Seed of Regatta servers (other server will be discovered during initial connection)
-		DialTimeout: 5 * time.Second, // Dial timeout
-		Secure: &client.SecureConfig{
+	// Create Regatta client
+	c, err := client.New(
+		client.WithEndpoints("127.0.0.1:8443"),
+		client.WithLogger(client.PrintLogger{}),
+		client.WithSecureConfig(&client.SecureConfig{
 			InsecureSkipVerify: true, // Skip verification of self-signed certificate
-		},
-	})
+		}),
+	)
 	if err != nil {
 		panic(err)
 	}
