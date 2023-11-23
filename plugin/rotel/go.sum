@@ -9,8 +9,8 @@ github.com/golang/protobuf v1.5.3 h1:KhyjKVUg7Usr/dYsdSqoFveMYd5ko72D+zANwlG1mmg
 github.com/golang/protobuf v1.5.3/go.mod h1:XVQd3VNwM+JqD3oG2Ue2ip4fOMUkwXdXDdiuN0vRsmY=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
-github.com/jamf/regatta-go v0.0.2 h1:9WTVbNYTLMuYIGUZYEDKPdIQYRoB2E0NTKpZGSJ92gA=
-github.com/jamf/regatta-go v0.0.2/go.mod h1:w+avgo6TlaDRlx9HVF/jVolt3Q8EVPigxtrdQmcY7eU=
+github.com/jamf/regatta-go v0.0.3 h1:zQJCiWXakP7T079WWCbH5vmF10WjOOwg54KNW4GbF+c=
+github.com/jamf/regatta-go v0.0.3/go.mod h1:hhsNfneUjpbaieWNr4aLG5goSlvP+mRQRJ8o6tuYgBQ=
 github.com/klauspost/compress v1.17.2 h1:RlWWUY/Dr4fL8qk9YG7DTZ7PDgME2V4csBXA8L/ixi4=
 github.com/klauspost/compress v1.17.2/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
