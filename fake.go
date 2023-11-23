@@ -145,6 +145,10 @@ func convResponsesToProto(in []*ResponseOp) (out []*regattapb.ResponseOp) {
 }
 
 func convToHeaderProto(rh *ResponseHeader) *regattapb.ResponseHeader {
+	if rh == nil {
+		return nil
+	}
+
 	return &regattapb.ResponseHeader{
 		ShardId:      rh.ShardId,
 		ReplicaId:    rh.ReplicaId,
