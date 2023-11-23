@@ -167,6 +167,21 @@ func (kv *hookedKV) Do(ctx context.Context, table string, op Op) (OpResponse, er
 	return kv.hook.OnKVCall(ctx, table, op, kv.KV.Do)
 }
 
+func (kv *hookedKV) Put(ctx context.Context, table, key, val string, opts ...OpOption) (*PutResponse, error) {
+	r, err := kv.Do(ctx, table, OpPut(key, val, opts...))
+	return r.put, toErr(ctx, err)
+}
+
+func (kv *hookedKV) Get(ctx context.Context, table, key string, opts ...OpOption) (*GetResponse, error) {
+	r, err := kv.Do(ctx, table, OpGet(key, opts...))
+	return r.get, toErr(ctx, err)
+}
+
+func (kv *hookedKV) Delete(ctx context.Context, table, key string, opts ...OpOption) (*DeleteResponse, error) {
+	r, err := kv.Do(ctx, table, OpDelete(key, opts...))
+	return r.del, toErr(ctx, err)
+}
+
 func (kv *hookedKV) Txn(ctx context.Context, table string) Txn {
 	return &txn{
 		kv:    kv,
