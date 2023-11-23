@@ -21,10 +21,10 @@ type cfg struct {
 	handlerOpts promhttp.HandlerOpts
 }
 
-func newCfg(namespace string, opts ...Opt) cfg {
+func newCfg(opts ...Opt) cfg {
 	reg := prometheus.NewRegistry()
 	cfg := cfg{
-		namespace:  namespace,
+		namespace:  DefNamespace,
 		reg:        reg,
 		gatherer:   reg,
 		defBuckets: DefBuckets,
@@ -57,6 +57,9 @@ const (
 	WriteTime                  // Enables {ns}_{ss}_write_time_seconds.
 )
 
+// DefNamespace is the default namespace for the metrics
+const DefNamespace = "regatta"
+
 // HistogramOpts allows histograms to be enabled with custom buckets
 type HistogramOpts struct {
 	Enable  Histogram
@@ -66,6 +69,13 @@ type HistogramOpts struct {
 type RegistererGatherer interface {
 	prometheus.Registerer
 	prometheus.Gatherer
+}
+
+// Namespace sets the Prometheus namespace for exposed metrics, overriding the default "regatta" namespace
+func Namespace(namespace string) Opt {
+	return opt{func(c *cfg) {
+		c.namespace = namespace
+	}}
 }
 
 // Registry sets the registerer and gatherer to add metrics to, rather than a

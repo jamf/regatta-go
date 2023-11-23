@@ -14,8 +14,8 @@ import (
 
 // NewMetrics returns a new Metrics that adds prometheus metrics to the
 // registry under the given namespace.
-func NewMetrics(namespace string, opts ...Opt) *Metrics {
-	return &Metrics{cfg: newCfg(namespace, opts...)}
+func NewMetrics(opts ...Opt) *Metrics {
+	return &Metrics{cfg: newCfg(opts...)}
 }
 
 type Metrics struct {
