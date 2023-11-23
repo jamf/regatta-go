@@ -48,13 +48,6 @@ func main() {
 }
 ```
 
-## Regatta Documentation
-
-For guidance on installation, deployment, and administration,
-see the [documentation page](https://engineering.jamf.com/regatta).
-
 ## Contributing
 
-Regatta is in active development and contributors are welcome! For guidance on development, see the page
-[Contributing](https://engineering.jamf.com/regatta/contributing).
-Feel free to ask questions and engage in [GitHub Discussions](https://github.com/jamf/regatta/discussions)!
+Regatta is in active development and contributors are welcome! Feel free to ask questions and engage in [GitHub Discussions](https://github.com/jamf/regatta-go/discussions)!
