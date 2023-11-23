@@ -4,6 +4,7 @@ package rprom
 
 import (
 	"context"
+	"time"
 
 	client "github.com/jamf/regatta-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -25,14 +26,14 @@ type Metrics struct {
 	connConnectActive    prometheus.Gauge
 
 	// Write
-	writeBytesTotal  prometheus.Counter
-	writeErrorsTotal prometheus.Counter
-	writeTimeSeconds prometheus.Histogram
+	writeBytesTotal prometheus.Counter
 
 	// Read
-	readBytesTotal  prometheus.Counter
-	readErrorsTotal prometheus.Counter
-	readTimeSeconds prometheus.Histogram
+	readBytesTotal prometheus.Counter
+
+	// Request
+	requestDuration *prometheus.HistogramVec
+	requestErrors   *prometheus.CounterVec
 }
 
 func (m *Metrics) OnNewClient(_ *client.Client) {
@@ -84,23 +85,6 @@ func (m *Metrics) OnNewClient(_ *client.Client) {
 		Help:        "Total number of bytes written",
 	})
 
-	m.writeErrorsTotal = factory.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
-		ConstLabels: constLabels,
-		Name:        "write_errors_total",
-		Help:        "Total number of write errors",
-	})
-
-	m.writeTimeSeconds = factory.NewHistogram(prometheus.HistogramOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
-		ConstLabels: constLabels,
-		Name:        "write_time_seconds",
-		Help:        "Time spent writing to Regatta",
-		Buckets:     getHistogramBuckets(WriteTime),
-	})
-
 	// Read
 
 	m.readBytesTotal = factory.NewCounter(prometheus.CounterOpts{
@@ -111,22 +95,24 @@ func (m *Metrics) OnNewClient(_ *client.Client) {
 		Help:        "Total number of bytes read",
 	})
 
-	m.readErrorsTotal = factory.NewCounter(prometheus.CounterOpts{
-		Namespace:   namespace,
-		Subsystem:   subsystem,
-		ConstLabels: constLabels,
-		Name:        "read_errors_total",
-		Help:        "Total number of read errors",
-	})
+	// Request
 
-	m.readTimeSeconds = factory.NewHistogram(prometheus.HistogramOpts{
+	m.requestDuration = factory.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace:   namespace,
 		Subsystem:   subsystem,
 		ConstLabels: constLabels,
-		Name:        "read_time_seconds",
-		Help:        "Time spent reading from Regatta",
+		Name:        "request_duration_seconds",
+		Help:        "Time spent executing Regatta KV operation",
 		Buckets:     getHistogramBuckets(ReadTime),
-	})
+	}, []string{"table", "op"})
+
+	m.requestErrors = factory.NewCounterVec(prometheus.CounterOpts{
+		Namespace:   namespace,
+		Subsystem:   subsystem,
+		ConstLabels: constLabels,
+		Name:        "request_errors_total",
+		Help:        "Time spent executing Regatta KV operation",
+	}, []string{"table", "op"})
 }
 
 func (m *Metrics) OnClientClose(_ *client.Client) {
@@ -134,11 +120,7 @@ func (m *Metrics) OnClientClose(_ *client.Client) {
 	_ = m.cfg.reg.Unregister(m.connDisconnectsTotal)
 	_ = m.cfg.reg.Unregister(m.connConnectActive)
 	_ = m.cfg.reg.Unregister(m.writeBytesTotal)
-	_ = m.cfg.reg.Unregister(m.writeErrorsTotal)
-	_ = m.cfg.reg.Unregister(m.writeTimeSeconds)
 	_ = m.cfg.reg.Unregister(m.readBytesTotal)
-	_ = m.cfg.reg.Unregister(m.readErrorsTotal)
-	_ = m.cfg.reg.Unregister(m.readTimeSeconds)
 }
 
 func (m *Metrics) OnHandleConn(_ context.Context, cs stats.ConnStats) {
@@ -154,21 +136,36 @@ func (m *Metrics) OnHandleConn(_ context.Context, cs stats.ConnStats) {
 
 func (m *Metrics) OnHandleRPC(_ context.Context, rs stats.RPCStats) {
 	switch st := rs.(type) {
-	case *stats.End:
-		if st.Client {
-			if st.Error != nil {
-				m.writeErrorsTotal.Inc()
-			}
-			m.writeTimeSeconds.Observe(st.EndTime.Sub(st.BeginTime).Seconds())
-		} else {
-			if st.Error != nil {
-				m.readErrorsTotal.Inc()
-			}
-			m.readTimeSeconds.Observe(st.EndTime.Sub(st.BeginTime).Seconds())
-		}
 	case *stats.InPayload:
 		m.readBytesTotal.Add(float64(st.WireLength))
 	case *stats.OutPayload:
 		m.writeBytesTotal.Add(float64(st.WireLength))
 	}
+}
+
+func (m *Metrics) OnKVCall(ctx context.Context, table string, op client.Op, fn client.KvDo) (resp client.OpResponse, err error) {
+	start := time.Now()
+	defer func() {
+		opLabel := getOpLabel(op)
+		m.requestDuration.WithLabelValues(table, opLabel).Observe(time.Since(start).Seconds())
+		if err != nil {
+			m.requestErrors.WithLabelValues(table, opLabel).Inc()
+		}
+	}()
+	return fn(ctx, table, op)
+}
+
+func getOpLabel(op client.Op) string {
+	opLabel := "unknown"
+	switch {
+	case op.IsGet():
+		opLabel = "get"
+	case op.IsPut():
+		opLabel = "put"
+	case op.IsDelete():
+		opLabel = "delete"
+	case op.IsTxn():
+		opLabel = "txn"
+	}
+	return opLabel
 }
