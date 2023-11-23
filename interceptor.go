@@ -34,12 +34,13 @@ func (c *Client) unaryClientInterceptor(optFuncs ...retryOption) grpc.UnaryClien
 			if err := waitRetryBackoff(ctx, attempt, callOpts); err != nil {
 				return err
 			}
-			c.lg.Debugf("retrying of unary invoker target=%s method=%s attempt=%d", cc.Target(), method, attempt)
+			if attempt != 0 {
+				c.lg.Debugf("retrying of unary invoker target=%s method=%s attempt=%d", cc.Target(), method, attempt)
+			}
 			lastErr = invoker(ctx, method, req, reply, cc, grpcOpts...)
 			if lastErr == nil {
 				return nil
 			}
-			c.lg.Warnf("retrying of unary invoker failed target=%s method=%s attempt=%d %v", cc.Target(), method, attempt, lastErr)
 			if isContextError(lastErr) {
 				if ctx.Err() != nil {
 					// its the context deadline or cancellation.
@@ -50,6 +51,7 @@ func (c *Client) unaryClientInterceptor(optFuncs ...retryOption) grpc.UnaryClien
 			if !isSafeRetry(c, lastErr, callOpts) {
 				return lastErr
 			}
+			c.lg.Warnf("invoker failed attempting retry target=%s method=%s attempt=%d %v", cc.Target(), method, attempt, lastErr)
 		}
 		return lastErr
 	}

@@ -57,32 +57,9 @@ type Client struct {
 	lg   Logger
 }
 
-func (c *Client) TagRPC(ctx context.Context, info *stats.RPCTagInfo) context.Context {
-	return ctx
-}
-
-func (c *Client) HandleRPC(ctx context.Context, stats stats.RPCStats) {
-	callHooks(c.cfg.Hooks, func(h HookHandleRPC) {
-		h.OnHandleRPC(ctx, stats)
-	})
-}
-
-func (c *Client) TagConn(ctx context.Context, info *stats.ConnTagInfo) context.Context {
-	return ctx
-}
-
-func (c *Client) HandleConn(ctx context.Context, stats stats.ConnStats) {
-	callHooks(c.cfg.Hooks, func(h HookHandleConn) {
-		h.OnHandleConn(ctx, stats)
-	})
-}
-
 // New creates a new regatta client from a given configuration.
-func New(spec *ConfigSpec, opts ...Option) (*Client, error) {
-	if len(spec.Endpoints) == 0 {
-		return nil, ErrNoAvailableEndpoints
-	}
-	cfg := newClientConfig(spec)
+func New(opts ...Option) (*Client, error) {
+	cfg := &config{}
 	for _, opt := range opts {
 		opt(cfg)
 	}
@@ -170,6 +147,26 @@ func (c *Client) Sync(ctx context.Context) error {
 	c.SetEndpoints(eps...)
 	c.lg.Debugf("set regatta endpoints by autoSync %v", eps)
 	return nil
+}
+
+func (c *Client) TagRPC(ctx context.Context, info *stats.RPCTagInfo) context.Context {
+	return ctx
+}
+
+func (c *Client) HandleRPC(ctx context.Context, stats stats.RPCStats) {
+	callHooks(c.cfg.Hooks, func(h HookHandleRPC) {
+		h.OnHandleRPC(ctx, stats)
+	})
+}
+
+func (c *Client) TagConn(ctx context.Context, info *stats.ConnTagInfo) context.Context {
+	return ctx
+}
+
+func (c *Client) HandleConn(ctx context.Context, stats stats.ConnStats) {
+	callHooks(c.cfg.Hooks, func(h HookHandleConn) {
+		h.OnHandleConn(ctx, stats)
+	})
 }
 
 func (c *Client) autoSync() {
@@ -297,8 +294,8 @@ func (c *Client) credentialsForEndpoint(ep string) grpccredentials.TransportCred
 }
 
 func newClient(cfg *config) (*Client, error) {
-	if cfg == nil {
-		cfg = &config{}
+	if len(cfg.Endpoints) == 0 {
+		return nil, ErrNoAvailableEndpoints
 	}
 	var creds grpccredentials.TransportCredentials
 	if cfg.TLS != nil {

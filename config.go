@@ -68,25 +68,6 @@ type config struct {
 	Hooks []Hook
 }
 
-// ConfigSpec is the configuration from users, which comes from command-line flags,
-// environment variables or config file. It is a fully declarative configuration,
-// and can be serialized & deserialized to/from JSON.
-type ConfigSpec struct {
-	Logger
-	Endpoints        []string      `json:"endpoints"`
-	DialTimeout      time.Duration `json:"dial-timeout"`
-	KeepAliveTime    time.Duration `json:"keepalive-time"`
-	KeepAliveTimeout time.Duration `json:"keepalive-timeout"`
-	Secure           *SecureConfig `json:"secure"`
-}
-
-func (s *ConfigSpec) EnsureDefaults() {
-	s.Logger = defaultLogger
-	s.DialTimeout = 5 * time.Second
-	s.KeepAliveTime = 30 * time.Second
-	s.KeepAliveTimeout = 5 * time.Second
-}
-
 type SecureConfig struct {
 	Cert       string `json:"cert"`
 	Key        string `json:"key"`
@@ -95,18 +76,6 @@ type SecureConfig struct {
 
 	InsecureTransport  bool `json:"insecure-transport"`
 	InsecureSkipVerify bool `json:"insecure-skip-tls-verify"`
-}
-
-func newClientConfig(confSpec *ConfigSpec) *config {
-	confSpec.EnsureDefaults()
-	return &config{
-		Endpoints:            confSpec.Endpoints,
-		DialTimeout:          confSpec.DialTimeout,
-		DialKeepAliveTime:    confSpec.KeepAliveTime,
-		DialKeepAliveTimeout: confSpec.KeepAliveTimeout,
-		TLS:                  newTLSConfig(confSpec.Secure, confSpec.Logger),
-		Logger:               confSpec,
-	}
 }
 
 func newTLSConfig(scfg *SecureConfig, lg Logger) *tls.Config {
@@ -185,6 +154,40 @@ func WithDialOptions(dial ...grpc.DialOption) Option {
 func WithEndpoints(endpoints ...string) Option {
 	return func(config *config) {
 		config.Endpoints = endpoints
+	}
+}
+
+// WithDialTimeout sets the dial timeout.
+func WithDialTimeout(t time.Duration) Option {
+	return func(config *config) {
+		config.DialTimeout = t
+	}
+}
+
+// WithKeepalive sets the keepalive protocol timeouts, keepaliveTime is the time after which client pings the server to see if
+// transport is alive. keepaliveTimeout is the time that the client waits for a response for the keep-alive probe.
+// If the response is not received in this time, the connection is closed.
+func WithKeepalive(keepaliveTime, keepaliveTimeout time.Duration) Option {
+	return func(config *config) {
+		config.DialKeepAliveTime = keepaliveTime
+		config.DialKeepAliveTimeout = keepaliveTimeout
+	}
+}
+
+// WithBlock returns a DialOption which makes callers of Dial block until the underlying connection is up.
+// Without this, Dial returns immediately and connecting the server happens in background.
+// Use of this feature is not recommended. For more information, please see: https://github.com/grpc/grpc-go/blob/master/Documentation/anti-patterns.md
+func WithBlock() Option {
+	return func(config *config) {
+		config.DialOptions = append(config.DialOptions, grpc.WithBlock())
+	}
+}
+
+// WithReturnConnectionError returns a DialOption which makes the client connection return a string containing both the last connection error that occurred and the context.DeadlineExceeded error.
+// Implies WithBlock().
+func WithReturnConnectionError() Option {
+	return func(config *config) {
+		config.DialOptions = append(config.DialOptions, grpc.WithReturnConnectionError())
 	}
 }
 
