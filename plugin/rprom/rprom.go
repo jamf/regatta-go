@@ -121,6 +121,8 @@ func (m *Metrics) OnClientClose(_ *client.Client) {
 	_ = m.cfg.reg.Unregister(m.connConnectActive)
 	_ = m.cfg.reg.Unregister(m.writeBytesTotal)
 	_ = m.cfg.reg.Unregister(m.readBytesTotal)
+	_ = m.cfg.reg.Unregister(m.requestDuration)
+	_ = m.cfg.reg.Unregister(m.requestErrors)
 }
 
 func (m *Metrics) OnHandleConn(_ context.Context, cs stats.ConnStats) {
