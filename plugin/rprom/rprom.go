@@ -111,7 +111,7 @@ func (m *Metrics) OnNewClient(_ *client.Client) {
 		Subsystem:   subsystem,
 		ConstLabels: constLabels,
 		Name:        "request_errors_total",
-		Help:        "Time spent executing Regatta KV operation",
+		Help:        "Total number of errors while executing KV operation",
 	}, []string{"table", "op"})
 }
 
