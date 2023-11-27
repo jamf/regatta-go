@@ -3,7 +3,7 @@ module github.com/jamf/regatta-go/plugin/rotel
 go 1.20
 
 require (
-	github.com/jamf/regatta-go v0.1.1
+	github.com/jamf/regatta-go v0.1.4
 	go.opentelemetry.io/otel v1.21.0
 	go.opentelemetry.io/otel/trace v1.21.0
 )
