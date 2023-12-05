@@ -45,6 +45,9 @@ type Op struct {
 	// for put
 	val []byte
 
+	// for delete
+	count bool
+
 	// txn
 	cmps    []Cmp
 	thenOps []Op
@@ -156,7 +159,7 @@ func (op *Op) toRequestOp() *regattapb.RequestOp {
 		r := &regattapb.RequestOp_Put{Key: op.key, Value: op.val, PrevKv: op.prevKV}
 		return &regattapb.RequestOp{Request: &regattapb.RequestOp_RequestPut{RequestPut: r}}
 	case tDeleteRange:
-		r := &regattapb.RequestOp_DeleteRange{Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
+		r := &regattapb.RequestOp_DeleteRange{Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV, Count: op.count}
 		return &regattapb.RequestOp{Request: &regattapb.RequestOp_RequestDeleteRange{RequestDeleteRange: r}}
 	default:
 		panic(fmt.Sprintf("unsupported transaction op type %d", op.t))
@@ -344,6 +347,11 @@ func WithPrevKV() OpOption {
 	return func(op *Op) {
 		op.prevKV = true
 	}
+}
+
+// WithCount makes the 'Delete' request return also count of deleted key-value pairs.
+func WithCount() OpOption {
+	return func(op *Op) { op.count = true }
 }
 
 // IsOptsWithPrefix returns true if WithPrefix option is called in the given opts.
