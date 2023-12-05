@@ -266,7 +266,7 @@ func (kv *kv) Do(ctx context.Context, table string, op Op) (OpResponse, error) {
 		}
 	case tDeleteRange:
 		var resp *regattapb.DeleteRangeResponse
-		r := &regattapb.DeleteRangeRequest{Table: []byte(table), Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
+		r := &regattapb.DeleteRangeRequest{Table: []byte(table), Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV, Count: op.count}
 		resp, err = kv.remote.DeleteRange(ctx, r, kv.callOpts...)
 		if err == nil {
 			return OpResponse{del: &DeleteResponse{
