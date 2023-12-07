@@ -1,8 +1,8 @@
 LDFLAGS = -X github.com/jamf/regatta-go/client.Version=$(VERSION)
 VERSION ?= $(shell git describe --tags --always --dirty)
 CGO_ENABLED ?= 0
-REGATTA_PROTO_SRC_DIR = client/internal/proto
-REGATTA_PROTO_VERSION = v0.2.1
+REGATTA_PROTO_SRC_DIR = internal/proto
+REGATTA_PROTO_VERSION = v0.3.0
 
 .PHONY: all
 all: getproto test build

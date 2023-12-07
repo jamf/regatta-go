@@ -63,9 +63,6 @@ func New(opts ...Option) (*Client, error) {
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	if len(cfg.Endpoints) == 0 {
-		return nil, ErrNoAvailableEndpoints
-	}
 	return newClient(cfg)
 }
 
@@ -75,9 +72,6 @@ func NewFromURL(url string, opts ...Option) (*Client, error) {
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	if len(cfg.Endpoints) == 0 {
-		return nil, ErrNoAvailableEndpoints
-	}
 	return newClient(cfg)
 }
 
@@ -86,9 +80,6 @@ func NewFromURLs(urls []string, opts ...Option) (*Client, error) {
 	cfg := &config{Endpoints: urls}
 	for _, opt := range opts {
 		opt(cfg)
-	}
-	if len(cfg.Endpoints) == 0 {
-		return nil, ErrNoAvailableEndpoints
 	}
 	return newClient(cfg)
 }
