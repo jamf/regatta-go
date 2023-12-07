@@ -56,9 +56,8 @@ func NewClusterFromClusterClient(remote regattapb.ClusterClient, c *Client) Clus
 	return api
 }
 
-func (c *cluster) MemberList(ctx context.Context, opts ...OpOption) (*MemberListResponse, error) {
-	opt := OpGet("", opts...)
-	resp, err := c.remote.MemberList(ctx, &regattapb.MemberListRequest{Linearizable: !opt.serializable}, c.callOpts...)
+func (c *cluster) MemberList(ctx context.Context, _ ...OpOption) (*MemberListResponse, error) {
+	resp, err := c.remote.MemberList(ctx, &regattapb.MemberListRequest{}, c.callOpts...)
 	if err == nil {
 		return (*MemberListResponse)(resp), nil
 	}
