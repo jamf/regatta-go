@@ -24,7 +24,7 @@ jobs:
         persist-credentials: false
         fetch-depth: 0
     - name: Install Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
     - name: Unit Tests
@@ -42,7 +42,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Install Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
     - name: Build
@@ -55,7 +55,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Install Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       id: go-version
       with:
         cache: false
