@@ -13,8 +13,22 @@ import (
 type (
 	Member             regattapb.Member
 	MemberListResponse regattapb.MemberListResponse
-	StatusResponse     regattapb.StatusResponse
+	TableStatus        regattapb.TableStatus
 )
+
+// StatusResponse represents response from Status API.
+type StatusResponse struct {
+	// Id is the member ID of this member.
+	Id string
+	// Version is the semver version used by the responding member.
+	Version string
+	// Info is the additional server info.
+	Info string
+	// Tables is a status of tables of the responding member.
+	Tables map[string]*TableStatus
+	// Errors contains alarm/health information and status.
+	Errors []string
+}
 
 type Cluster interface {
 	// MemberList lists the current cluster membership.
@@ -74,7 +88,23 @@ func (c *cluster) Status(ctx context.Context, endpoint string) (*StatusResponse,
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
-	return (*StatusResponse)(resp), nil
+	return mapProtoStatusResponse(resp), nil
+}
+
+func mapProtoStatusResponse(resp *regattapb.StatusResponse) *StatusResponse {
+	tables := make(map[string]*TableStatus, len(resp.Tables))
+
+	for k, v := range resp.Tables {
+		tables[k] = (*TableStatus)(v)
+	}
+
+	return &StatusResponse{
+		Id:      resp.Id,
+		Version: resp.Version,
+		Info:    resp.Info,
+		Tables:  tables,
+		Errors:  resp.Errors,
+	}
 }
 
 type retryClusterClient struct {
