@@ -18,15 +18,15 @@ type (
 
 // StatusResponse represents response from Status API.
 type StatusResponse struct {
-	// id is the member ID of this member.
+	// Id is the member ID of this member.
 	Id string
-	// version is the semver version used by the responding member.
+	// Version is the semver version used by the responding member.
 	Version string
-	// info is the additional server info.
+	// Info is the additional server info.
 	Info string
-	// tables is a status of tables of the responding member.
+	// Tables is a status of tables of the responding member.
 	Tables map[string]*TableStatus
-	// errors contains alarm/health information and status.
+	// Errors contains alarm/health information and status.
 	Errors []string
 }
 
