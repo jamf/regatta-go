@@ -4,6 +4,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	regattapb "github.com/jamf/regatta-go/internal/proto"
@@ -11,6 +12,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 )
+
+// RecordedRequest holds request fields recorded by the fake client.
+type RecordedRequest struct {
+	Table   string
+	Request Op
+}
 
 // FakeResponse holds response fields returned by the fake client.
 type FakeResponse struct {
@@ -21,11 +28,15 @@ type FakeResponse struct {
 type fakeKVServer struct {
 	regattapb.UnimplementedKVServer
 
+	recordedRequests []RecordedRequest
+
 	fakeResponses    []FakeResponse
 	fakeResponsesIdx int
 }
 
-func (f *fakeKVServer) Range(context.Context, *regattapb.RangeRequest) (*regattapb.RangeResponse, error) {
+func (f *fakeKVServer) Range(_ context.Context, req *regattapb.RangeRequest) (*regattapb.RangeResponse, error) {
+	f.recordedRequests = append(f.recordedRequests, convRangeToRequest(req))
+
 	i := f.fakeResponsesIdx % len(f.fakeResponses)
 	f.fakeResponsesIdx++
 	resp := f.fakeResponses[i]
@@ -43,7 +54,9 @@ func (f *fakeKVServer) Range(context.Context, *regattapb.RangeRequest) (*regatta
 	}, nil
 }
 
-func (f *fakeKVServer) Put(context.Context, *regattapb.PutRequest) (*regattapb.PutResponse, error) {
+func (f *fakeKVServer) Put(_ context.Context, req *regattapb.PutRequest) (*regattapb.PutResponse, error) {
+	f.recordedRequests = append(f.recordedRequests, convPutToRequest(req))
+
 	i := f.fakeResponsesIdx % len(f.fakeResponses)
 	f.fakeResponsesIdx++
 	resp := f.fakeResponses[i]
@@ -68,7 +81,9 @@ func (f *fakeKVServer) Put(context.Context, *regattapb.PutRequest) (*regattapb.P
 	}, nil
 }
 
-func (f *fakeKVServer) DeleteRange(context.Context, *regattapb.DeleteRangeRequest) (*regattapb.DeleteRangeResponse, error) {
+func (f *fakeKVServer) DeleteRange(_ context.Context, req *regattapb.DeleteRangeRequest) (*regattapb.DeleteRangeResponse, error) {
+	f.recordedRequests = append(f.recordedRequests, convDeleteRangeToRequest(req))
+
 	i := f.fakeResponsesIdx % len(f.fakeResponses)
 	f.fakeResponsesIdx++
 	resp := f.fakeResponses[i]
@@ -85,7 +100,9 @@ func (f *fakeKVServer) DeleteRange(context.Context, *regattapb.DeleteRangeReques
 	}, nil
 }
 
-func (f *fakeKVServer) Txn(context.Context, *regattapb.TxnRequest) (*regattapb.TxnResponse, error) {
+func (f *fakeKVServer) Txn(_ context.Context, req *regattapb.TxnRequest) (*regattapb.TxnResponse, error) {
+	f.recordedRequests = append(f.recordedRequests, convTxnToRequest(req))
+
 	i := f.fakeResponsesIdx % len(f.fakeResponses)
 	f.fakeResponsesIdx++
 	resp := f.fakeResponses[i]
@@ -105,17 +122,19 @@ func (f *fakeKVServer) Txn(context.Context, *regattapb.TxnRequest) (*regattapb.T
 // FakeClient provides a fake regatta client. This client is intended to be used only in tests.
 type FakeClient struct {
 	listener *bufconn.Listener
+	kvServer *fakeKVServer
 }
 
 // NewFake creates an instance of FakeClient, including a function for client termination.
 func NewFake(fakeResponses ...FakeResponse) (*FakeClient, context.CancelFunc) {
 	srv := grpc.NewServer()
-	regattapb.RegisterKVServer(srv, &fakeKVServer{fakeResponses: fakeResponses})
+	fs := &fakeKVServer{fakeResponses: fakeResponses}
+	regattapb.RegisterKVServer(srv, fs)
 
 	l := bufconn.Listen(1024)
 	go srv.Serve(l)
 
-	return &FakeClient{l}, srv.Stop
+	return &FakeClient{listener: l, kvServer: fs}, srv.Stop
 }
 
 // Client returns a new instance of regatta client targeting the fake regatta server.
@@ -128,6 +147,126 @@ func (c *FakeClient) Client() *Client {
 	}
 
 	return &Client{conn: conn, KV: &kv{remote: regattapb.NewKVClient(conn)}}
+}
+
+func (c *FakeClient) RecordedRequests() []RecordedRequest {
+	return c.kvServer.recordedRequests
+}
+
+func convRangeToRequest(rr *regattapb.RangeRequest) RecordedRequest {
+	if rr == nil {
+		return RecordedRequest{}
+	}
+
+	return RecordedRequest{
+		Table: string(rr.Table),
+		Request: Op{
+			t:            tRange,
+			key:          rr.Key,
+			end:          rr.RangeEnd,
+			limit:        rr.Limit,
+			serializable: !rr.Linearizable,
+			keysOnly:     rr.KeysOnly,
+			countOnly:    rr.CountOnly,
+			minModRev:    rr.MinModRevision,
+			maxModRev:    rr.MaxModRevision,
+			minCreateRev: rr.MinCreateRevision,
+			maxCreateRev: rr.MaxCreateRevision,
+		},
+	}
+}
+
+func convPutToRequest(pr *regattapb.PutRequest) RecordedRequest {
+	if pr == nil {
+		return RecordedRequest{}
+	}
+
+	return RecordedRequest{
+		Table: string(pr.Table),
+		Request: Op{
+			t:      tPut,
+			key:    pr.Key,
+			val:    pr.Value,
+			prevKV: pr.PrevKv,
+		},
+	}
+}
+
+func convDeleteRangeToRequest(drr *regattapb.DeleteRangeRequest) RecordedRequest {
+	if drr == nil {
+		return RecordedRequest{}
+	}
+
+	return RecordedRequest{
+		Table: string(drr.Table),
+		Request: Op{
+			t:      tDeleteRange,
+			key:    drr.Key,
+			end:    drr.RangeEnd,
+			prevKV: drr.PrevKv,
+			count:  drr.Count,
+		},
+	}
+}
+
+func convTxnToRequest(tr *regattapb.TxnRequest) RecordedRequest {
+	if tr == nil {
+		return RecordedRequest{}
+	}
+
+	thenOps := make([]Op, len(tr.Success))
+	for i, s := range tr.Success {
+		thenOps[i] = convToOp(s)
+	}
+	elseOps := make([]Op, len(tr.Failure))
+	for i, f := range tr.Failure {
+		elseOps[i] = convToOp(f)
+	}
+	cmps := make([]Cmp, len(tr.Compare))
+	for i := range tr.Compare {
+		cmps[i] = Cmp{tr.Compare[i]}
+	}
+
+	return RecordedRequest{
+		Table: string(tr.Table),
+		Request: Op{
+			t:       tTxn,
+			cmps:    cmps,
+			thenOps: thenOps,
+			elseOps: elseOps,
+		},
+	}
+}
+
+func convToOp(reqOp *regattapb.RequestOp) Op {
+	switch op := reqOp.Request.(type) {
+	case *regattapb.RequestOp_RequestRange:
+		return Op{
+			t:         tRange,
+			key:       op.RequestRange.Key,
+			end:       op.RequestRange.RangeEnd,
+			limit:     op.RequestRange.Limit,
+			keysOnly:  op.RequestRange.KeysOnly,
+			countOnly: op.RequestRange.CountOnly,
+		}
+	case *regattapb.RequestOp_RequestPut:
+		return Op{
+			t:      tPut,
+			key:    op.RequestPut.Key,
+			val:    op.RequestPut.Value,
+			prevKV: op.RequestPut.PrevKv,
+		}
+	case *regattapb.RequestOp_RequestDeleteRange:
+		return Op{
+			t:      tDeleteRange,
+			key:    op.RequestDeleteRange.Key,
+			end:    op.RequestDeleteRange.RangeEnd,
+			prevKV: op.RequestDeleteRange.PrevKv,
+			count:  op.RequestDeleteRange.Count,
+		}
+	default:
+		panic(fmt.Sprintf("unsupported transaction op type %v", op))
+	}
 }
 
 func convKeyValuesToProto(in []*KeyValue) (out []*regattapb.KeyValue) {
