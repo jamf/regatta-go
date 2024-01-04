@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/klauspost/compress v1.17.4
-	google.golang.org/grpc v1.59.0
+	google.golang.org/grpc v1.60.1
 	google.golang.org/protobuf v1.32.0
 )
 
