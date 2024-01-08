@@ -3,7 +3,7 @@ module github.com/jamf/regatta-go/plugin/rprom
 go 1.20
 
 require (
-	github.com/jamf/regatta-go v0.2.1
+	github.com/jamf/regatta-go v0.2.2
 	github.com/prometheus/client_golang v1.18.0
 	google.golang.org/grpc v1.59.0
 )
