@@ -28,8 +28,6 @@ var (
 	ErrOldCluster           = errors.New("regattaclient: old cluster version")
 )
 
-var sharedBufferPool = grpc.NewSharedBufferPool()
-
 var Version = "unknown"
 
 // Client provides and manages an regatta client session.
@@ -215,9 +213,6 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 		grpc.WithStreamInterceptor(c.streamClientInterceptor(withMax(0), rrBackoff)),
 		grpc.WithUnaryInterceptor(c.unaryClientInterceptor(withMax(defaultUnaryMaxRetries), rrBackoff)),
 	)
-
-	// Buffer pool.
-	opts = append(opts, grpc.WithRecvBufferPool(sharedBufferPool))
 
 	return opts
 }

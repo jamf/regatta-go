@@ -13,6 +13,7 @@ type opType int
 const (
 	// A default Op has opType 0, which is invalid.
 	tRange opType = iota + 1
+	tIterateRange
 	tPut
 	tDeleteRange
 	tTxn
@@ -81,13 +82,18 @@ func (op *Op) RangeBytes() []byte { return op.end }
 // Rev returns the requested revision, if any.
 func (op *Op) Rev() int64 { return op.rev }
 
-// IsPut returns true iff the operation is a Put.
+// IsPut returns true if the operation is a Put.
 func (op *Op) IsPut() bool { return op.t == tPut }
 
-// IsGet returns true iff the operation is a Get.
+// IsGet returns true if the operation is a Get.
 func (op *Op) IsGet() bool { return op.t == tRange }
 
-// IsDelete returns true iff the operation is a Delete.
+// IsIterate returns true if the operation is Iterate.
+func (op *Op) IsIterate() bool {
+	return op.t == tIterateRange
+}
+
+// IsDelete returns true if the operation is a Delete.
 func (op *Op) IsDelete() bool { return op.t == tDeleteRange }
 
 // IsSerializable returns true if the serializable field is true.
@@ -109,8 +115,8 @@ func (op *Op) ValueBytes() []byte { return op.val }
 func (op *Op) WithValueBytes(v []byte) { op.val = v }
 
 func (op *Op) toRangeRequest(table string) *regattapb.RangeRequest {
-	if op.t != tRange {
-		panic("op.t != tRange")
+	if op.t != tRange && op.t != tIterateRange {
+		panic("op.t != tRange|tIterateRange")
 	}
 	r := &regattapb.RangeRequest{
 		Table:             []byte(table),
@@ -195,6 +201,28 @@ func OpGet(key string, opts ...OpOption) Op {
 	}
 	ret := Op{t: tRange, key: []byte(key)}
 	ret.applyOpts(opts)
+	switch {
+	case ret.count:
+		panic("unexpected count in range, you probably meant countOnly")
+	case ret.prevKV:
+		panic("unexpected prevKv in range")
+	}
+	return ret
+}
+
+func OpIterate(key string, opts ...OpOption) Op {
+	// WithPrefix and WithFromKey are not supported together
+	if IsOptsWithPrefix(opts) && IsOptsWithFromKey(opts) {
+		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
+	}
+	ret := Op{t: tIterateRange, key: []byte(key)}
+	ret.applyOpts(opts)
+	switch {
+	case ret.count:
+		panic("unexpected count in iterateRange, you probably meant countOnly")
+	case ret.prevKV:
+		panic("unexpected prevKv in iterateRange")
+	}
 	return ret
 }
 

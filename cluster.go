@@ -112,9 +112,9 @@ type retryClusterClient struct {
 }
 
 func (r *retryClusterClient) MemberList(ctx context.Context, in *regattapb.MemberListRequest, opts ...grpc.CallOption) (resp *regattapb.MemberListResponse, err error) {
-	return r.cc.MemberList(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+	return r.cc.MemberList(ctx, in, append(opts, withRepeatable())...)
 }
 
 func (r *retryClusterClient) Status(ctx context.Context, in *regattapb.StatusRequest, opts ...grpc.CallOption) (*regattapb.StatusResponse, error) {
-	return r.cc.Status(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+	return r.cc.Status(ctx, in, append(opts, withRepeatable())...)
 }

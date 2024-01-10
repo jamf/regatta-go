@@ -69,6 +69,10 @@ func (t *Tracing) opAttrs(attrs []attribute.KeyValue, op client.Op) (string, []a
 		attrs = append(attrs, semconv.DBOperation("get"))
 		attrs = append(attrs, semconv.DBStatement(fmt.Sprintf("regatta.v1.kv/Range key: %s rangeEnd: %s", t.formatKey(op.KeyBytes()), t.formatKey(op.RangeBytes()))))
 		return "regatta/get", attrs
+	case op.IsIterate():
+		attrs = append(attrs, semconv.DBOperation("iterate"))
+		attrs = append(attrs, semconv.DBStatement(fmt.Sprintf("regatta.v1.kv/IterateRange key: %s rangeEnd: %s", t.formatKey(op.KeyBytes()), t.formatKey(op.RangeBytes()))))
+		return "regatta/iterate", attrs
 	case op.IsPut():
 		attrs = append(attrs, semconv.DBOperation("put"))
 		attrs = append(attrs, semconv.DBStatement(fmt.Sprintf("regatta.v1.kv/Put key: %s", t.formatKey(op.KeyBytes()))))

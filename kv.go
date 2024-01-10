@@ -5,6 +5,8 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"math/rand"
 	"time"
 
@@ -28,6 +30,8 @@ type GetResponse struct {
 	// count is set to the number of keys within the range when requested.
 	Count int64 `json:"count,omitempty"`
 }
+
+type IteratorResponse func(yield func(response *GetResponse, err error) bool)
 
 func (resp *GetResponse) String() string {
 	enc, _ := json.Marshal(resp)
@@ -89,6 +93,18 @@ type Table interface {
 	// When passed WithSort(), the keys will be sorted.
 	Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error)
 
+	// Iterate retrieves keys in iterator fashion, use this if you expect that the dataset returned will be larger than 4MiB.
+	// Iterator runs until exhaustion or until the callback func returns false.
+	// By default, Iterate will return the value for "key", if any.
+	// When passed WithRange(end), Iterate will return the keys in the range [key, end).
+	// When passed WithFromKey(), Iterate returns keys greater than or equal to key.
+	// When passed key "" and WithFromKey(), Iterate returns all keys.
+	// When passed WithRev(rev) with rev > 0, Iterate retrieves keys at the given revision;
+	// if the required revision is compacted, the request will fail with ErrCompacted .
+	// When passed WithLimit(limit), the number of returned keys is bounded by limit.
+	// When passed WithSort(), the keys will be sorted.
+	Iterate(ctx context.Context, key string, opts ...OpOption) (IteratorResponse, error)
+
 	// Delete deletes a key, or optionally using WithRange(end), [key, end).
 	Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error)
 
@@ -107,11 +123,25 @@ type KV interface {
 	// By default, Get will return the value for "key", if any.
 	// When passed WithRange(end), Get will return the keys in the range [key, end).
 	// When passed WithFromKey(), Get returns keys greater than or equal to key.
+	// When passed key "" and WithFromKey(), Get returns all keys.
 	// When passed WithRev(rev) with rev > 0, Get retrieves keys at the given revision;
 	// if the required revision is compacted, the request will fail with ErrCompacted .
 	// When passed WithLimit(limit), the number of returned keys is bounded by limit.
 	// When passed WithSort(), the keys will be sorted.
+	// Note that a single response is limited by a max size of ~4MiB. If more keys in the range exists the GetResponse.More will be set to true.
 	Get(ctx context.Context, table, key string, opts ...OpOption) (*GetResponse, error)
+
+	// Iterate retrieves keys in iterator fashion, use this if you expect that the dataset returned will be larger than 4MiB.
+	// Iterator runs until exhaustion or until the callback func returns false.
+	// By default, Iterate will return the value for "key", if any.
+	// When passed WithRange(end), Iterate will return the keys in the range [key, end).
+	// When passed WithFromKey(), Iterate returns keys greater than or equal to key.
+	// When passed key "" and WithFromKey(), Iterate returns all keys.
+	// When passed WithRev(rev) with rev > 0, Iterate retrieves keys at the given revision;
+	// if the required revision is compacted, the request will fail with ErrCompacted .
+	// When passed WithLimit(limit), the number of returned keys is bounded by limit.
+	// When passed WithSort(), the keys will be sorted.
+	Iterate(ctx context.Context, table, key string, opts ...OpOption) (IteratorResponse, error)
 
 	// Delete deletes a key, or optionally using WithRange(end), [key, end).
 	Delete(ctx context.Context, table, key string, opts ...OpOption) (*DeleteResponse, error)
@@ -131,16 +161,18 @@ type KV interface {
 }
 
 type OpResponse struct {
-	put *PutResponse
-	get *GetResponse
-	del *DeleteResponse
-	txn *TxnResponse
+	put  *PutResponse
+	get  *GetResponse
+	del  *DeleteResponse
+	txn  *TxnResponse
+	iter IteratorResponse
 }
 
-func (op OpResponse) Put() *PutResponse    { return op.put }
-func (op OpResponse) Get() *GetResponse    { return op.get }
-func (op OpResponse) Del() *DeleteResponse { return op.del }
-func (op OpResponse) Txn() *TxnResponse    { return op.txn }
+func (op OpResponse) Put() *PutResponse         { return op.put }
+func (op OpResponse) Get() *GetResponse         { return op.get }
+func (op OpResponse) Iterate() IteratorResponse { return op.iter }
+func (op OpResponse) Del() *DeleteResponse      { return op.del }
+func (op OpResponse) Txn() *TxnResponse         { return op.txn }
 
 func (resp *PutResponse) OpResponse() OpResponse {
 	return OpResponse{put: resp}
@@ -175,6 +207,11 @@ func (kv *hookedKV) Put(ctx context.Context, table, key, val string, opts ...OpO
 func (kv *hookedKV) Get(ctx context.Context, table, key string, opts ...OpOption) (*GetResponse, error) {
 	r, err := kv.Do(ctx, table, OpGet(key, opts...))
 	return r.get, toErr(ctx, err)
+}
+
+func (kv *hookedKV) Iterate(ctx context.Context, table, key string, opts ...OpOption) (IteratorResponse, error) {
+	r, err := kv.Do(ctx, table, OpIterate(key, opts...))
+	return r.iter, toErr(ctx, err)
 }
 
 func (kv *hookedKV) Delete(ctx context.Context, table, key string, opts ...OpOption) (*DeleteResponse, error) {
@@ -220,6 +257,11 @@ func (kv *kv) Get(ctx context.Context, table, key string, opts ...OpOption) (*Ge
 	return r.get, toErr(ctx, err)
 }
 
+func (kv *kv) Iterate(ctx context.Context, table, key string, opts ...OpOption) (IteratorResponse, error) {
+	r, err := kv.Do(ctx, table, OpIterate(key, opts...))
+	return r.iter, toErr(ctx, err)
+}
+
 func (kv *kv) Delete(ctx context.Context, table, key string, opts ...OpOption) (*DeleteResponse, error) {
 	r, err := kv.Do(ctx, table, OpDelete(key, opts...))
 	return r.del, toErr(ctx, err)
@@ -252,6 +294,33 @@ func (kv *kv) Do(ctx context.Context, table string, op Op) (OpResponse, error) {
 				Kvs:    convKeyValues(resp.Kvs),
 				More:   resp.More,
 				Count:  resp.Count,
+			}}, nil
+		}
+	case tIterateRange:
+		var resp regattapb.KV_IterateRangeClient
+		resp, err = kv.remote.IterateRange(ctx, op.toRangeRequest(table), kv.callOpts...)
+		if err == nil {
+			return OpResponse{iter: func(yield func(*GetResponse, error) bool) {
+				for {
+					r, err := resp.Recv()
+					if err != nil {
+						if errors.Is(err, io.EOF) {
+							break
+						}
+						if !yield(nil, err) {
+							break
+						}
+					} else {
+						if !yield(&GetResponse{
+							Header: (*ResponseHeader)(r.Header),
+							Kvs:    convKeyValues(r.Kvs),
+							More:   r.More,
+							Count:  r.Count,
+						}, nil) {
+							break
+						}
+					}
+				}
 			}}, nil
 		}
 	case tPut:
@@ -320,6 +389,11 @@ func (t *table) Get(ctx context.Context, key string, opts ...OpOption) (*GetResp
 	return r.get, toErr(ctx, err)
 }
 
+func (t *table) Iterate(ctx context.Context, key string, opts ...OpOption) (IteratorResponse, error) {
+	r, err := t.kv.Do(ctx, t.table, OpIterate(key, opts...))
+	return r.iter, toErr(ctx, err)
+}
+
 func (t *table) Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error) {
 	r, err := t.kv.Do(ctx, t.table, OpDelete(key, opts...))
 	return r.del, toErr(ctx, err)
@@ -338,7 +412,11 @@ type retryKVClient struct {
 }
 
 func (rkv *retryKVClient) Range(ctx context.Context, in *regattapb.RangeRequest, opts ...grpc.CallOption) (resp *regattapb.RangeResponse, err error) {
-	return rkv.client.Range(ctx, in, append(opts, withRetryPolicy(repeatable))...)
+	return rkv.client.Range(ctx, in, append(opts, withRepeatable())...)
+}
+
+func (rkv *retryKVClient) IterateRange(ctx context.Context, in *regattapb.RangeRequest, opts ...grpc.CallOption) (resp regattapb.KV_IterateRangeClient, err error) {
+	return rkv.client.IterateRange(ctx, in, append(opts, withRepeatable())...)
 }
 
 func (rkv *retryKVClient) Put(ctx context.Context, in *regattapb.PutRequest, opts ...grpc.CallOption) (resp *regattapb.PutResponse, err error) {
@@ -392,10 +470,10 @@ type retryOption struct {
 	applyFunc func(opt *options)
 }
 
-// withRetryPolicy sets the retry policy of this call.
-func withRetryPolicy(rp retryPolicy) retryOption {
+// withRepeatable sets the retry policy of this call to repeatable.
+func withRepeatable() retryOption {
 	return retryOption{applyFunc: func(o *options) {
-		o.retryPolicy = rp
+		o.retryPolicy = repeatable
 	}}
 }
 

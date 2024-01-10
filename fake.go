@@ -54,6 +54,30 @@ func (f *fakeKVServer) Range(_ context.Context, req *regattapb.RangeRequest) (*r
 	}, nil
 }
 
+func (f *fakeKVServer) IterateRange(req *regattapb.RangeRequest, server regattapb.KV_IterateRangeServer) error {
+	f.recordedRequests = append(f.recordedRequests, convRangeToRequest(req))
+
+	i := f.fakeResponsesIdx % len(f.fakeResponses)
+	f.fakeResponsesIdx++
+	resp := f.fakeResponses[i]
+
+	if resp.Err != nil {
+		return resp.Err
+	}
+
+	r := resp.Response.Iterate()
+	r(func(r *GetResponse, err error) bool {
+		_ = server.Send(&regattapb.RangeResponse{
+			Header: convToHeaderProto(r.Header),
+			Kvs:    convKeyValuesToProto(r.Kvs),
+			More:   r.More,
+			Count:  r.Count,
+		})
+		return true
+	})
+	return nil
+}
+
 func (f *fakeKVServer) Put(_ context.Context, req *regattapb.PutRequest) (*regattapb.PutResponse, error) {
 	f.recordedRequests = append(f.recordedRequests, convPutToRequest(req))
 
