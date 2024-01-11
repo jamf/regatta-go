@@ -162,6 +162,8 @@ func getOpLabel(op client.Op) string {
 	switch {
 	case op.IsGet():
 		opLabel = "get"
+	case op.IsIterate():
+		opLabel = "iterate"
 	case op.IsPut():
 		opLabel = "put"
 	case op.IsDelete():
