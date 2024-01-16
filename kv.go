@@ -208,6 +208,10 @@ func (resp *TxnResponse) OpResponse() OpResponse {
 	return OpResponse{txn: resp}
 }
 
+func (resp IteratorResponse) OpResponse() OpResponse {
+	return OpResponse{iter: resp}
+}
+
 type hookedKV struct {
 	KV
 	hook HookKVOpDo
