@@ -15,9 +15,11 @@ import (
 )
 
 type (
-	KeyValue       regattapb.KeyValue
-	ResponseHeader regattapb.ResponseHeader
-	ResponseOp     regattapb.ResponseOp
+	KeyValue              regattapb.KeyValue
+	ResponseHeader        regattapb.ResponseHeader
+	ResponseOpRange       regattapb.ResponseOp_Range
+	ResponseOpPut         regattapb.ResponseOp_Put
+	ResponseOpDeleteRange regattapb.ResponseOp_DeleteRange
 )
 
 type GetResponse struct {
@@ -60,6 +62,22 @@ type PutResponse struct {
 func (resp *PutResponse) String() string {
 	enc, _ := json.Marshal(resp)
 	return string(enc)
+}
+
+type ResponseOp struct {
+	*regattapb.ResponseOp
+}
+
+func (x *ResponseOp) GetResponseRange() *ResponseOpRange {
+	return (*ResponseOpRange)(x.ResponseOp.GetResponseRange())
+}
+
+func (x *ResponseOp) GetResponsePut() *ResponseOpPut {
+	return (*ResponseOpPut)(x.ResponseOp.GetResponsePut())
+}
+
+func (x *ResponseOp) GetResponseDeleteRange() *ResponseOpDeleteRange {
+	return (*ResponseOpDeleteRange)(x.ResponseOp.GetResponseDeleteRange())
 }
 
 type TxnResponse struct {
@@ -362,7 +380,7 @@ func (kv *kv) Do(ctx context.Context, table string, op Op) (OpResponse, error) {
 
 func convResponseOps(in []*regattapb.ResponseOp) (out []*ResponseOp) {
 	for _, t := range in {
-		out = append(out, (*ResponseOp)(t))
+		out = append(out, &ResponseOp{ResponseOp: t})
 	}
 	return
 }

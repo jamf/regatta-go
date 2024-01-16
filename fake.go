@@ -302,7 +302,7 @@ func convKeyValuesToProto(in []*KeyValue) (out []*regattapb.KeyValue) {
 
 func convResponsesToProto(in []*ResponseOp) (out []*regattapb.ResponseOp) {
 	for _, t := range in {
-		out = append(out, (*regattapb.ResponseOp)(t))
+		out = append(out, t.ResponseOp)
 	}
 	return
 }
