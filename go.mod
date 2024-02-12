@@ -3,7 +3,7 @@ module github.com/jamf/regatta-go
 go 1.20
 
 require (
-	github.com/klauspost/compress v1.17.5
+	github.com/klauspost/compress v1.17.6
 	google.golang.org/grpc v1.61.0
 	google.golang.org/protobuf v1.32.0
 )
