@@ -14,25 +14,26 @@ type (
 	Member             regattapb.Member
 	MemberListResponse regattapb.MemberListResponse
 	TableStatus        regattapb.TableStatus
+	// StatusResponse represents response from Status API.
+	StatusResponse struct {
+		// Id is the member ID of this member.
+		Id string
+		// Version is the semver version used by the responding member.
+		Version string
+		// Info is the additional server info.
+		Info string
+		// Tables is a status of tables of the responding member.
+		Tables map[string]*TableStatus
+		// Errors contains alarm/health information and status.
+		Errors []string
+		// Config contains the member configuration.
+		Config map[string]any
+	}
 )
-
-// StatusResponse represents response from Status API.
-type StatusResponse struct {
-	// Id is the member ID of this member.
-	Id string
-	// Version is the semver version used by the responding member.
-	Version string
-	// Info is the additional server info.
-	Info string
-	// Tables is a status of tables of the responding member.
-	Tables map[string]*TableStatus
-	// Errors contains alarm/health information and status.
-	Errors []string
-}
 
 type Cluster interface {
 	// MemberList lists the current cluster membership.
-	MemberList(ctx context.Context, opts ...OpOption) (*MemberListResponse, error)
+	MemberList(ctx context.Context) (*MemberListResponse, error)
 	// Status gets the status of the endpoint.
 	Status(ctx context.Context, endpoint string) (*StatusResponse, error)
 }
@@ -45,7 +46,8 @@ type cluster struct {
 
 func newCluster(c *Client) Cluster {
 	api := &cluster{
-		remote: &retryClusterClient{cc: regattapb.NewClusterClient(c.conn)},
+		remote:   &retryClusterClient{cc: regattapb.NewClusterClient(c.conn)},
+		callOpts: c.callOpts,
 		dial: func(endpoint string) (regattapb.ClusterClient, func(), error) {
 			conn, err := c.Dial(endpoint)
 			if err != nil {
@@ -55,9 +57,6 @@ func newCluster(c *Client) Cluster {
 			cancel := func() { conn.Close() }
 			return &retryClusterClient{cc: regattapb.NewClusterClient(c.conn)}, cancel, nil
 		},
-	}
-	if c != nil {
-		api.callOpts = c.callOpts
 	}
 	return api
 }
@@ -70,7 +69,7 @@ func NewClusterFromClusterClient(remote regattapb.ClusterClient, c *Client) Clus
 	return api
 }
 
-func (c *cluster) MemberList(ctx context.Context, _ ...OpOption) (*MemberListResponse, error) {
+func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
 	resp, err := c.remote.MemberList(ctx, &regattapb.MemberListRequest{}, c.callOpts...)
 	if err == nil {
 		return (*MemberListResponse)(resp), nil
@@ -84,7 +83,7 @@ func (c *cluster) Status(ctx context.Context, endpoint string) (*StatusResponse,
 		return nil, toErr(ctx, err)
 	}
 	defer cancel()
-	resp, err := remote.Status(ctx, &regattapb.StatusRequest{}, c.callOpts...)
+	resp, err := remote.Status(ctx, &regattapb.StatusRequest{Config: true}, c.callOpts...)
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
@@ -92,18 +91,19 @@ func (c *cluster) Status(ctx context.Context, endpoint string) (*StatusResponse,
 }
 
 func mapProtoStatusResponse(resp *regattapb.StatusResponse) *StatusResponse {
-	tables := make(map[string]*TableStatus, len(resp.Tables))
+	ts := make(map[string]*TableStatus, len(resp.Tables))
 
 	for k, v := range resp.Tables {
-		tables[k] = (*TableStatus)(v)
+		ts[k] = (*TableStatus)(v)
 	}
 
 	return &StatusResponse{
 		Id:      resp.Id,
 		Version: resp.Version,
 		Info:    resp.Info,
-		Tables:  tables,
+		Tables:  ts,
 		Errors:  resp.Errors,
+		Config:  resp.Config.AsMap(),
 	}
 }
 

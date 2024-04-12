@@ -34,6 +34,7 @@ var Version = "unknown"
 type Client struct {
 	KV
 	Cluster
+	Tables
 
 	conn *grpc.ClientConn
 
@@ -371,6 +372,7 @@ func newClient(cfg *config) (*Client, error) {
 	client.conn = conn
 
 	client.Cluster = newCluster(client)
+	client.Tables = newTables(client)
 	client.KV = newKV(client)
 
 	if cfg.RejectOldCluster {
