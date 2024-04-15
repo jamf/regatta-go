@@ -2,7 +2,7 @@ LDFLAGS = -X github.com/jamf/regatta-go/client.Version=$(VERSION)
 VERSION ?= $(shell git describe --tags --always --dirty)
 CGO_ENABLED ?= 0
 REGATTA_PROTO_SRC_DIR = internal/proto
-REGATTA_PROTO_VERSION = v0.4.0
+REGATTA_PROTO_VERSION = v0.5.0
 
 .PHONY: all
 all: getproto test build
@@ -15,7 +15,6 @@ test:
 build:
 	test $(VERSION) || (echo "version not set"; exit 1)
 	CGO_ENABLED=$(CGO_ENABLED) go build -ldflags="$(LDFLAGS)" -v ./...
-
 
 
 .PHONY: getproto-cleanup
