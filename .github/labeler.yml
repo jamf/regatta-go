@@ -1,7 +1,9 @@
 code:
-- "**/**.go"
+- changed-files:
+  - any-glob-to-any-file: "**/**.go"
 docs:
-- "docs/**"
-- "README.md"
+- changed-files:
+  - any-glob-to-any-file: ["docs/**", "README.md"]
 proto:
-- "proto/**"
+- changed-files:
+  - any-glob-to-any-file: "proto/**"
