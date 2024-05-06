@@ -64,6 +64,19 @@ func (resp *PutResponse) String() string {
 	return string(enc)
 }
 
+func NewResponseOp(any any) *ResponseOp {
+	switch r := any.(type) {
+	case *GetResponse:
+		return &ResponseOp{get: r}
+	case *PutResponse:
+		return &ResponseOp{put: r}
+	case *DeleteResponse:
+		return &ResponseOp{delete: r}
+	default:
+		panic(errors.New("unknown response op type"))
+	}
+}
+
 type ResponseOp struct {
 	get    *GetResponse
 	put    *PutResponse
@@ -400,26 +413,20 @@ func convResponseOps(in []*regattapb.ResponseOp) (out []*ResponseOp) {
 	for _, t := range in {
 		switch r := t.GetResponse().(type) {
 		case *regattapb.ResponseOp_ResponseRange:
-			out = append(out, &ResponseOp{
-				get: &GetResponse{
-					Kvs:   convKeyValues(r.ResponseRange.GetKvs()),
-					More:  r.ResponseRange.GetMore(),
-					Count: r.ResponseRange.GetCount(),
-				},
-			})
+			out = append(out, NewResponseOp(&GetResponse{
+				Kvs:   convKeyValues(r.ResponseRange.GetKvs()),
+				More:  r.ResponseRange.GetMore(),
+				Count: r.ResponseRange.GetCount(),
+			}))
 		case *regattapb.ResponseOp_ResponsePut:
-			out = append(out, &ResponseOp{
-				put: &PutResponse{
-					PrevKv: (*KeyValue)(r.ResponsePut.GetPrevKv()),
-				},
-			})
+			out = append(out, NewResponseOp(&PutResponse{
+				PrevKv: (*KeyValue)(r.ResponsePut.GetPrevKv()),
+			}))
 		case *regattapb.ResponseOp_ResponseDeleteRange:
-			out = append(out, &ResponseOp{
-				delete: &DeleteResponse{
-					Deleted: r.ResponseDeleteRange.GetDeleted(),
-					PrevKvs: convKeyValues(r.ResponseDeleteRange.GetPrevKvs()),
-				},
-			})
+			out = append(out, NewResponseOp(&DeleteResponse{
+				Deleted: r.ResponseDeleteRange.GetDeleted(),
+				PrevKvs: convKeyValues(r.ResponseDeleteRange.GetPrevKvs()),
+			}))
 		}
 	}
 	return
