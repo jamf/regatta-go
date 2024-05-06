@@ -65,19 +65,33 @@ func (resp *PutResponse) String() string {
 }
 
 type ResponseOp struct {
-	*regattapb.ResponseOp
+	get    *GetResponse
+	put    *PutResponse
+	delete *DeleteResponse
 }
 
-func (x *ResponseOp) GetResponseRange() *ResponseOpRange {
-	return (*ResponseOpRange)(x.ResponseOp.GetResponseRange())
+func (x *ResponseOp) IsGet() bool {
+	return x.get != nil
 }
 
-func (x *ResponseOp) GetResponsePut() *ResponseOpPut {
-	return (*ResponseOpPut)(x.ResponseOp.GetResponsePut())
+func (x *ResponseOp) Get() *GetResponse {
+	return x.get
 }
 
-func (x *ResponseOp) GetResponseDeleteRange() *ResponseOpDeleteRange {
-	return (*ResponseOpDeleteRange)(x.ResponseOp.GetResponseDeleteRange())
+func (x *ResponseOp) IsPut() bool {
+	return x.put != nil
+}
+
+func (x *ResponseOp) Put() *PutResponse {
+	return x.put
+}
+
+func (x *ResponseOp) IsDelete() bool {
+	return x.delete != nil
+}
+
+func (x *ResponseOp) Delete() *DeleteResponse {
+	return x.delete
 }
 
 type TxnResponse struct {
@@ -384,7 +398,29 @@ func (kv *kv) Do(ctx context.Context, table string, op Op) (OpResponse, error) {
 
 func convResponseOps(in []*regattapb.ResponseOp) (out []*ResponseOp) {
 	for _, t := range in {
-		out = append(out, &ResponseOp{ResponseOp: t})
+		switch r := t.GetResponse().(type) {
+		case *regattapb.ResponseOp_ResponseRange:
+			out = append(out, &ResponseOp{
+				get: &GetResponse{
+					Kvs:   convKeyValues(r.ResponseRange.GetKvs()),
+					More:  r.ResponseRange.GetMore(),
+					Count: r.ResponseRange.GetCount(),
+				},
+			})
+		case *regattapb.ResponseOp_ResponsePut:
+			out = append(out, &ResponseOp{
+				put: &PutResponse{
+					PrevKv: (*KeyValue)(r.ResponsePut.GetPrevKv()),
+				},
+			})
+		case *regattapb.ResponseOp_ResponseDeleteRange:
+			out = append(out, &ResponseOp{
+				delete: &DeleteResponse{
+					Deleted: r.ResponseDeleteRange.GetDeleted(),
+					PrevKvs: convKeyValues(r.ResponseDeleteRange.GetPrevKvs()),
+				},
+			})
+		}
 	}
 	return
 }

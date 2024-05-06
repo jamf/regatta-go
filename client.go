@@ -314,14 +314,10 @@ func newClient(cfg *config) (*Client, error) {
 		callOpts: defaultCallOpts,
 	}
 
-	var err error
 	if cfg.Logger != nil {
 		client.lg = cfg.Logger
 	} else {
 		client.lg = defaultLogger
-	}
-	if err != nil {
-		return nil, err
 	}
 
 	if cfg.MaxCallSendMsgSize > 0 || cfg.MaxCallRecvMsgSize > 0 {
@@ -424,19 +420,19 @@ func (c *Client) checkVersion() (err error) {
 				return
 			}
 			vs := strings.Split(resp.Version, ".")
-			maj, min := 0, 0
+			maj, minor := 0, 0
 			if len(vs) >= 2 {
 				var serr error
 				if maj, serr = strconv.Atoi(vs[0]); serr != nil {
 					errc <- serr
 					return
 				}
-				if min, serr = strconv.Atoi(vs[1]); serr != nil {
+				if minor, serr = strconv.Atoi(vs[1]); serr != nil {
 					errc <- serr
 					return
 				}
 			}
-			if maj < 3 || (maj == 3 && min < 4) {
+			if maj < 0 || (maj == 0 && minor < 5) {
 				rerr = ErrOldCluster
 			}
 			errc <- rerr
@@ -472,27 +468,4 @@ func toErr(ctx context.Context, err error) error {
 		}
 	}
 	return err
-}
-
-// IsConnCanceled returns true, if error is from a closed gRPC connection.
-// ref. https://github.com/grpc/grpc-go/pull/1854
-func IsConnCanceled(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	// >= gRPC v1.23.x
-	s, ok := status.FromError(err)
-	if ok {
-		// connection is canceled or server has already closed the connection
-		return s.Code() == codes.Canceled || s.Message() == "transport is closing"
-	}
-
-	// >= gRPC v1.10.x
-	if errors.Is(err, context.Canceled) {
-		return true
-	}
-
-	// <= gRPC v1.7.x returns 'errors.New("grpc: the client connection is closing")'
-	return strings.Contains(err.Error(), "grpc: the client connection is closing")
 }

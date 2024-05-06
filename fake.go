@@ -36,7 +36,9 @@ type fakeKVServer struct {
 
 func (f *fakeKVServer) Range(_ context.Context, req *regattapb.RangeRequest) (*regattapb.RangeResponse, error) {
 	f.recordedRequests = append(f.recordedRequests, convRangeToRequest(req))
-
+	if len(f.fakeResponses) == 0 {
+		return &regattapb.RangeResponse{}, nil
+	}
 	i := f.fakeResponsesIdx % len(f.fakeResponses)
 	f.fakeResponsesIdx++
 	resp := f.fakeResponses[i]
@@ -56,7 +58,9 @@ func (f *fakeKVServer) Range(_ context.Context, req *regattapb.RangeRequest) (*r
 
 func (f *fakeKVServer) IterateRange(req *regattapb.RangeRequest, server regattapb.KV_IterateRangeServer) error {
 	f.recordedRequests = append(f.recordedRequests, convRangeToRequest(req))
-
+	if len(f.fakeResponses) == 0 {
+		return nil
+	}
 	i := f.fakeResponsesIdx % len(f.fakeResponses)
 	f.fakeResponsesIdx++
 	resp := f.fakeResponses[i]
@@ -80,7 +84,9 @@ func (f *fakeKVServer) IterateRange(req *regattapb.RangeRequest, server regattap
 
 func (f *fakeKVServer) Put(_ context.Context, req *regattapb.PutRequest) (*regattapb.PutResponse, error) {
 	f.recordedRequests = append(f.recordedRequests, convPutToRequest(req))
-
+	if len(f.fakeResponses) == 0 {
+		return &regattapb.PutResponse{}, nil
+	}
 	i := f.fakeResponsesIdx % len(f.fakeResponses)
 	f.fakeResponsesIdx++
 	resp := f.fakeResponses[i]
@@ -107,7 +113,9 @@ func (f *fakeKVServer) Put(_ context.Context, req *regattapb.PutRequest) (*regat
 
 func (f *fakeKVServer) DeleteRange(_ context.Context, req *regattapb.DeleteRangeRequest) (*regattapb.DeleteRangeResponse, error) {
 	f.recordedRequests = append(f.recordedRequests, convDeleteRangeToRequest(req))
-
+	if len(f.fakeResponses) == 0 {
+		return &regattapb.DeleteRangeResponse{}, nil
+	}
 	i := f.fakeResponsesIdx % len(f.fakeResponses)
 	f.fakeResponsesIdx++
 	resp := f.fakeResponses[i]
@@ -126,7 +134,9 @@ func (f *fakeKVServer) DeleteRange(_ context.Context, req *regattapb.DeleteRange
 
 func (f *fakeKVServer) Txn(_ context.Context, req *regattapb.TxnRequest) (*regattapb.TxnResponse, error) {
 	f.recordedRequests = append(f.recordedRequests, convTxnToRequest(req))
-
+	if len(f.fakeResponses) == 0 {
+		return &regattapb.TxnResponse{}, nil
+	}
 	i := f.fakeResponsesIdx % len(f.fakeResponses)
 	f.fakeResponsesIdx++
 	resp := f.fakeResponses[i]
@@ -302,7 +312,23 @@ func convKeyValuesToProto(in []*KeyValue) (out []*regattapb.KeyValue) {
 
 func convResponsesToProto(in []*ResponseOp) (out []*regattapb.ResponseOp) {
 	for _, t := range in {
-		out = append(out, t.ResponseOp)
+		switch {
+		case t.get != nil:
+			out = append(out, &regattapb.ResponseOp{Response: &regattapb.ResponseOp_ResponseRange{ResponseRange: &regattapb.ResponseOp_Range{
+				Kvs:   convKeyValuesToProto(t.get.Kvs),
+				More:  t.get.More,
+				Count: t.get.Count,
+			}}})
+		case t.put != nil:
+			out = append(out, &regattapb.ResponseOp{Response: &regattapb.ResponseOp_ResponsePut{ResponsePut: &regattapb.ResponseOp_Put{
+				PrevKv: (*regattapb.KeyValue)(t.put.PrevKv),
+			}}})
+		case t.delete != nil:
+			out = append(out, &regattapb.ResponseOp{Response: &regattapb.ResponseOp_ResponseDeleteRange{ResponseDeleteRange: &regattapb.ResponseOp_DeleteRange{
+				Deleted: t.delete.Deleted,
+				PrevKvs: convKeyValuesToProto(t.delete.PrevKvs),
+			}}})
+		}
 	}
 	return
 }
