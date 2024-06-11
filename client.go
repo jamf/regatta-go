@@ -16,6 +16,7 @@ import (
 	"github.com/jamf/regatta-go/internal/resolver"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
 	grpccredentials "google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
@@ -244,16 +245,18 @@ func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.
 
 	opts = append(opts, c.cfg.DialOptions...)
 
-	dctx := c.ctx
-	if c.cfg.DialTimeout > 0 {
-		var cancel context.CancelFunc
-		dctx, cancel = context.WithTimeout(c.ctx, c.cfg.DialTimeout)
-		defer cancel() // TODO: Is this right for cases where grpc.WithBlock() is not set on the dial options?
-	}
 	target := fmt.Sprintf("%s://%p/%s", resolver.Schema, c, authority(c.endpoints[0]))
-	conn, err := grpc.DialContext(dctx, target, opts...)
+	conn, err := grpc.NewClient(target, opts...)
 	if err != nil {
 		return nil, err
+	}
+	if c.cfg.InitialConnectionTimeout > 0 {
+		var cancel context.CancelFunc
+		dctx, cancel := context.WithTimeout(c.ctx, c.cfg.InitialConnectionTimeout)
+		defer cancel()
+		if !conn.WaitForStateChange(dctx, connectivity.Ready) {
+			return nil, fmt.Errorf("cannot obtain ready connection in %s: %w", c.cfg.InitialConnectionTimeout, dctx.Err())
+		}
 	}
 	return conn, nil
 }
@@ -404,9 +407,9 @@ func (c *Client) checkVersion() (err error) {
 	eps := c.Endpoints()
 	errc := make(chan error, len(eps))
 	ctx, cancel := context.WithCancel(c.ctx)
-	if c.cfg.DialTimeout > 0 {
+	if c.cfg.InitialConnectionTimeout > 0 {
 		cancel()
-		ctx, cancel = context.WithTimeout(c.ctx, c.cfg.DialTimeout)
+		ctx, cancel = context.WithTimeout(c.ctx, c.cfg.InitialConnectionTimeout)
 	}
 
 	wg.Add(len(eps))
