@@ -19,9 +19,6 @@ type config struct {
 	// 0 disables auto-sync. By default, auto-sync is disabled.
 	AutoSyncInterval time.Duration
 
-	// DialTimeout is the timeout for failing to establish a connection.
-	DialTimeout time.Duration
-
 	// DialKeepAliveTime is the time after which client pings the server to see if
 	// transport is alive.
 	DialKeepAliveTime time.Duration
@@ -29,6 +26,9 @@ type config struct {
 	// DialKeepAliveTimeout is the time that the client waits for a response for the
 	// keep-alive probe. If the response is not received in this time, the connection is closed.
 	DialKeepAliveTimeout time.Duration
+
+	// InitialConnectionTimeout is the timeout for establishing first connection to the server when the client is instantiated.
+	InitialConnectionTimeout time.Duration
 
 	// MaxCallSendMsgSize is the client-side request send limit in bytes.
 	// If 0, it defaults to 2.0 MiB (2 * 1024 * 1024).
@@ -55,8 +55,7 @@ type config struct {
 	// other operations that do not have an explicit context.
 	Context context.Context
 
-	// Logger sets client-side logger.
-	// If nil, fallback to building LogConfig.
+	// Logger sets client-side logger. If nil, fallback to building LogConfig.
 	Logger Logger
 
 	// PermitWithoutStream when set will allow client to send keepalive pings to server without any active streams(RPCs).
@@ -158,9 +157,17 @@ func WithEndpoints(endpoints ...string) Option {
 }
 
 // WithDialTimeout sets the dial timeout.
+// Deprecated: use WithInitialConnectionTimeout instead.
 func WithDialTimeout(t time.Duration) Option {
 	return func(config *config) {
-		config.DialTimeout = t
+		config.InitialConnectionTimeout = t
+	}
+}
+
+// WithInitialConnectionTimeout sets the initial connection timeout.
+func WithInitialConnectionTimeout(t time.Duration) Option {
+	return func(config *config) {
+		config.InitialConnectionTimeout = t
 	}
 }
 
@@ -171,23 +178,6 @@ func WithKeepalive(keepaliveTime, keepaliveTimeout time.Duration) Option {
 	return func(config *config) {
 		config.DialKeepAliveTime = keepaliveTime
 		config.DialKeepAliveTimeout = keepaliveTimeout
-	}
-}
-
-// WithBlock returns a DialOption which makes callers of Dial block until the underlying connection is up.
-// Without this, Dial returns immediately and connecting the server happens in background.
-// Use of this feature is not recommended. For more information, please see: https://github.com/grpc/grpc-go/blob/master/Documentation/anti-patterns.md
-func WithBlock() Option {
-	return func(config *config) {
-		config.DialOptions = append(config.DialOptions, grpc.WithBlock())
-	}
-}
-
-// WithReturnConnectionError returns a DialOption which makes the client connection return a string containing both the last connection error that occurred and the context.DeadlineExceeded error.
-// Implies WithBlock().
-func WithReturnConnectionError() Option {
-	return func(config *config) {
-		config.DialOptions = append(config.DialOptions, grpc.WithReturnConnectionError())
 	}
 }
 

@@ -173,14 +173,13 @@ func NewFake(fakeResponses ...FakeResponse) (*FakeClient, context.CancelFunc) {
 
 // Client returns a new instance of regatta client targeting the fake regatta server.
 func (c *FakeClient) Client() *Client {
-	conn, err := grpc.Dial("fake", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+	cl, err := NewFromURL("fake", WithDialOptions(grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 		return c.listener.Dial()
-	}))
+	})))
 	if err != nil {
 		panic(err)
 	}
-
-	return &Client{conn: conn, KV: &kv{remote: regattapb.NewKVClient(conn)}}
+	return cl
 }
 
 func (c *FakeClient) RecordedRequests() []RecordedRequest {
