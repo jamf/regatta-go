@@ -36,6 +36,9 @@ var (
 	// If set to 0, retry is disabled.
 	defaultUnaryMaxRetries uint = 10
 
+	// client-side streaming iterate range retry limit.
+	iterateRangeRetries uint = 5
+
 	// client-side retry backoff wait between requests.
 	defaultBackoffWaitBetween = 25 * time.Millisecond
 

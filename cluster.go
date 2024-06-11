@@ -70,7 +70,7 @@ func NewClusterFromClusterClient(remote regattapb.ClusterClient, c *Client) Clus
 }
 
 func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
-	resp, err := c.remote.MemberList(ctx, &regattapb.MemberListRequest{}, c.callOpts...)
+	resp, err := c.remote.MemberList(ctx, &regattapb.MemberListRequest{}, append(c.callOpts, withRepeatable())...)
 	if err == nil {
 		return (*MemberListResponse)(resp), nil
 	}
@@ -83,7 +83,7 @@ func (c *cluster) Status(ctx context.Context, endpoint string) (*StatusResponse,
 		return nil, toErr(ctx, err)
 	}
 	defer cancel()
-	resp, err := remote.Status(ctx, &regattapb.StatusRequest{Config: true}, c.callOpts...)
+	resp, err := remote.Status(ctx, &regattapb.StatusRequest{Config: true}, append(c.callOpts, withRepeatable())...)
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}

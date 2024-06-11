@@ -80,7 +80,7 @@ func (t *tables) DeleteTable(ctx context.Context, name string) (*DeleteTableResp
 }
 
 func (t *tables) ListTables(ctx context.Context) (*ListTablesResponse, error) {
-	resp, err := t.remote.List(ctx, &regattapb.ListTablesRequest{}, t.callOpts...)
+	resp, err := t.remote.List(ctx, &regattapb.ListTablesRequest{}, append(t.callOpts, withRepeatable())...)
 	if err == nil {
 		return mapProtoListTablesResponse(resp), nil
 	}

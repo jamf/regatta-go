@@ -222,6 +222,7 @@ func waitRetryBackoff(ctx context.Context, attempt uint, callOpts *options) erro
 	}
 	if waitTime > 0 {
 		timer := time.NewTimer(waitTime)
+		defer timer.Stop()
 		select {
 		case <-ctx.Done():
 			timer.Stop()

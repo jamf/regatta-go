@@ -481,7 +481,7 @@ func (rkv *retryKVClient) Range(ctx context.Context, in *regattapb.RangeRequest,
 }
 
 func (rkv *retryKVClient) IterateRange(ctx context.Context, in *regattapb.RangeRequest, opts ...grpc.CallOption) (resp regattapb.KV_IterateRangeClient, err error) {
-	return rkv.client.IterateRange(ctx, in, append(opts, withRepeatable())...)
+	return rkv.client.IterateRange(ctx, in, append(opts, withRepeatable(), withMax(iterateRangeRetries))...)
 }
 
 func (rkv *retryKVClient) Put(ctx context.Context, in *regattapb.PutRequest, opts ...grpc.CallOption) (resp *regattapb.PutResponse, err error) {
