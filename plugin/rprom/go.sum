@@ -6,8 +6,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/jamf/regatta-go v0.4.2 h1:ECVodItRqLJdl/kwmPakcyf8qx7R9oh92OR5pbPoZ4c=
-github.com/jamf/regatta-go v0.4.2/go.mod h1:TOYkvSnUb5GWBSZubu+T6Ro62+yVuBg/oe3fbpuuxIU=
+github.com/jamf/regatta-go v0.4.3 h1:AbQkWkyziG/NkS9miF8RGCYcQ1koSJgh84FmZmnpeJY=
+github.com/jamf/regatta-go v0.4.3/go.mod h1:v0JXCfMzsCj9fj8zf0mZhsGjGLtDLf9hhbw/gnvdURk=
 github.com/klauspost/compress v1.17.8 h1:YcnTYrq7MikUT7k0Yb5eceMmALQPYBW/Xltxn0NAMnU=
 github.com/klauspost/compress v1.17.8/go.mod h1:Di0epgTjJY877eYKx5yC51cX2A2Vl2ibi7bDH9ttBbw=
 github.com/planetscale/vtprotobuf v0.6.0 h1:nBeETjudeJ5ZgBHUz1fVHvbqUKnYOXNhsIEabROxmNA=

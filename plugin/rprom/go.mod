@@ -5,7 +5,7 @@ go 1.22
 toolchain go1.22.2
 
 require (
-	github.com/jamf/regatta-go v0.4.2
+	github.com/jamf/regatta-go v0.4.3
 	github.com/prometheus/client_golang v1.19.1
 	google.golang.org/grpc v1.64.0
 )
